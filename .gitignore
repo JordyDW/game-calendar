@@ -1,0 +1,5 @@
+seed.php
+.wp-env.json
+.wp-env.php.ini
+node_modules/
+*.zip
