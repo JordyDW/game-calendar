@@ -40,6 +40,11 @@ class GC_Settings {
 			? sanitize_text_field( $input['gc_igdb_client_secret'] )
 			: ( $existing['gc_igdb_client_secret'] ?? '' );
 
+		// Only update GitHub token if a new non-empty value is provided.
+		$output['gc_github_token'] = ( isset( $input['gc_github_token'] ) && '' !== $input['gc_github_token'] )
+			? sanitize_text_field( $input['gc_github_token'] )
+			: ( $existing['gc_github_token'] ?? '' );
+
 		foreach ( array( 'gc_color_release', 'gc_color_event' ) as $color_key ) {
 			$output[ $color_key ] = isset( $input[ $color_key ] )
 				? sanitize_hex_color( $input[ $color_key ] )
@@ -67,6 +72,7 @@ class GC_Settings {
 		$options        = get_option( self::OPTION_NAME, array() );
 		$client_id      = $options['gc_igdb_client_id']     ?? '';
 		$secret_stored  = $options['gc_igdb_client_secret'] ?? '';
+		$github_stored  = $options['gc_github_token']       ?? '';
 		$color_release  = $options['gc_color_release']      ?? '#ac00fb';
 		$color_event    = $options['gc_color_event']        ?? '#96eefe';
 		?>
@@ -128,6 +134,37 @@ class GC_Settings {
 									<?php esc_html_e( 'Test Connection', 'game-calendar' ); ?>
 								</button>
 								<span id="gc-test-result" class="gc-test-result"></span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="gc-settings-section">
+					<div class="gc-settings-section-head">
+						<h2 class="gc-settings-section-title">
+							<span class="dashicons dashicons-update"></span>
+							<?php esc_html_e( 'Auto-Updates', 'game-calendar' ); ?>
+						</h2>
+						<p class="gc-settings-section-desc">
+							<?php echo wp_kses(
+								__( 'A GitHub Personal Access Token is required to check for plugin updates. Create one at <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">github.com/settings/tokens</a> — classic token, <strong>no scopes needed</strong>. This authenticates the GitHub API call and avoids rate-limit errors.', 'game-calendar' ),
+								array( 'a' => array( 'href' => array(), 'target' => array(), 'rel' => array() ), 'strong' => array() )
+							); ?>
+						</p>
+					</div>
+					<div class="gc-settings-section-body">
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-github-token">
+								<?php esc_html_e( 'GitHub Token', 'game-calendar' ); ?>
+							</label>
+							<div class="gc-settings-control">
+								<input type="password" id="gc-github-token"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_github_token]"
+									value=""
+									placeholder="<?php echo esc_attr( $github_stored ? str_repeat( '•', 20 ) : __( 'ghp_…', 'game-calendar' ) ); ?>"
+									class="gc-settings-input"
+									autocomplete="new-password" />
+								<p class="gc-settings-hint"><?php esc_html_e( 'Leave blank to keep the saved token.', 'game-calendar' ); ?></p>
 							</div>
 						</div>
 					</div>
