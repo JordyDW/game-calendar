@@ -158,6 +158,12 @@ game-calendar/
 
 ---
 
+## License
+
+[GPL v2 or later](LICENSE)
+
+---
+
 ## Credits
 
 - [FullCalendar](https://fullcalendar.io/) — calendar UI
