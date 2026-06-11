@@ -14,12 +14,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'GC_VERSION', '1.0.0' );
-define( 'GC_GITHUB_REPO', 'https://github.com/JordyDW/game-calendar' );
+define( 'GC_GITHUB_REPO',  'https://github.com/JordyDW/game-calendar' );
 define( 'GC_PLUGIN_FILE', __FILE__ );
 define( 'GC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'GC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
-// Auto-updater via private GitHub releases.
+// Auto-updater via public GitHub releases.
 require GC_PLUGIN_DIR . 'includes/lib/plugin-update-checker/load-v5p4.php';
 add_action( 'init', function () {
 	$updater = YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
@@ -28,9 +28,6 @@ add_action( 'init', function () {
 		'game-calendar'
 	);
 	$updater->getVcsApi()->enableReleaseAssets();
-	if ( defined( 'GC_GITHUB_TOKEN' ) && GC_GITHUB_TOKEN ) {
-		$updater->setAuthentication( GC_GITHUB_TOKEN );
-	}
 } );
 
 spl_autoload_register( function ( $class ) {
