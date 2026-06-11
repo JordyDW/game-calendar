@@ -1,8 +1,41 @@
-/* ── Wrap ─────────────────────────────────────────────────────────────────── */
+/* ── CSS Custom Properties (light defaults) ──────────────────────────────── */
 
 .gc-calendar-wrap {
+	--gc-accent:       #ac00fb;
+	--gc-accent-light: rgba(172, 0, 251, 0.08);
+	--gc-accent-mid:   rgba(172, 0, 251, 0.18);
+	--gc-accent-hover: #c933ff;
+
+	--gc-bg:           #ffffff;
+	--gc-bg-subtle:    #f8f9fa;
+	--gc-bg-hover:     #f3f4f6;
+	--gc-bg-other:     #f9fafb;
+
+	--gc-border:       #e5e7eb;
+
+	--gc-text:         #111827;
+	--gc-text-muted:   #6b7280;
+	--gc-text-faint:   #d1d5db;
+
+	--gc-header-text:  #374151;
+
 	font-family: inherit;
 	max-width: 100%;
+}
+
+/* ── Dark theme (add class="gc-calendar-wrap gc-theme-dark" or override vars) */
+
+.gc-calendar-wrap.gc-theme-dark {
+	--gc-bg:           #111111;
+	--gc-bg-subtle:    #1a1a1a;
+	--gc-bg-hover:     #1e1e1e;
+	--gc-bg-other:     #0d0d0d;
+	--gc-border:       #2a2a2a;
+	--gc-text:         #e8e8e8;
+	--gc-text-muted:   #888888;
+	--gc-text-faint:   #444444;
+	--gc-header-text:  #96eefe;
+	--gc-accent-light: #1a0d26;
 }
 
 /* ── Filters ─────────────────────────────────────────────────────────────── */
@@ -24,16 +57,16 @@
 	font-weight: 600;
 	user-select: none;
 	padding: 6px 14px;
-	border: 1px solid #333;
+	border: 1px solid var(--gc-border);
 	border-radius: 20px;
-	background: #1c1c1c;
-	color: #c0c0c0;
+	background: var(--gc-bg-subtle);
+	color: var(--gc-text-muted);
 	transition: border-color .15s, background .15s, color .15s;
 }
 
 .gc-filter-label:hover {
-	border-color: #ac00fb;
-	color: #fff;
+	border-color: var(--gc-accent);
+	color: var(--gc-text);
 }
 
 .gc-filter-label input[type="checkbox"] {
@@ -51,26 +84,26 @@
 	flex-shrink: 0;
 }
 
-.gc-dot--release { background: #ac00fb; }
-.gc-dot--event   { background: #96eefe; }
+.gc-dot--release { background: var(--gc-accent); }
+.gc-dot--event   { background: #0ea5e9; }
 
 .gc-filter-label:has(input:checked) {
-	background: #1e0033;
-	border-color: #ac00fb;
-	color: #fff;
+	background: var(--gc-accent-light);
+	border-color: var(--gc-accent);
+	color: var(--gc-text);
 }
 
 /* ── Calendar container ──────────────────────────────────────────────────── */
 
 #gc-calendar {
-	border: 1px solid #2a2a2a;
+	border: 1px solid var(--gc-border);
 	border-radius: 12px;
 	overflow: hidden;
-	background: #111;
-	box-shadow: 0 4px 32px rgba(0, 0, 0, .5), 0 0 0 1px rgba(172, 0, 251, .15);
+	background: var(--gc-bg);
+	box-shadow: 0 2px 16px rgba(0, 0, 0, .06), 0 0 0 1px var(--gc-accent-mid);
 }
 
-/* ── FullCalendar dark overrides ─────────────────────────────────────────── */
+/* ── FullCalendar overrides ───────────────────────────────────────────────── */
 
 #gc-calendar .fc {
 	font-family: inherit;
@@ -79,13 +112,13 @@
 #gc-calendar .fc-theme-standard td,
 #gc-calendar .fc-theme-standard th,
 #gc-calendar .fc-theme-standard .fc-scrollgrid {
-	border-color: #2a2a2a;
+	border-color: var(--gc-border);
 }
 
 #gc-calendar .fc-toolbar-title {
 	font-size: 1.1em;
 	font-weight: 700;
-	color: #fff;
+	color: var(--gc-text);
 }
 
 #gc-calendar .fc-toolbar.fc-header-toolbar {
@@ -94,9 +127,9 @@
 }
 
 #gc-calendar .fc-button {
-	background: #1e1e1e;
-	border: 1px solid #333;
-	color: #c0c0c0;
+	background: var(--gc-bg-subtle);
+	border: 1px solid var(--gc-border);
+	color: var(--gc-text-muted);
 	font-size: 13px;
 	font-weight: 500;
 	padding: 6px 12px;
@@ -106,25 +139,25 @@
 }
 
 #gc-calendar .fc-button:hover {
-	background: #2a2a2a;
-	border-color: #ac00fb;
-	color: #fff;
+	background: var(--gc-bg-hover);
+	border-color: var(--gc-accent);
+	color: var(--gc-text);
 }
 
 #gc-calendar .fc-button-active {
-	background: #3d0066 !important;
-	border-color: #ac00fb !important;
+	background: var(--gc-accent) !important;
+	border-color: var(--gc-accent) !important;
 	color: #fff !important;
 	font-weight: 600 !important;
 }
 
 #gc-calendar .fc-button:focus {
-	outline: 2px solid #ac00fb !important;
+	outline: 2px solid var(--gc-accent) !important;
 	outline-offset: 1px;
 }
 
 #gc-calendar .fc-col-header {
-	background: #1a1a1a;
+	background: var(--gc-bg-subtle);
 }
 
 #gc-calendar .fc-col-header-cell-cushion {
@@ -132,29 +165,29 @@
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: .05em;
-	color: #96eefe;
+	color: var(--gc-header-text);
 	text-decoration: none;
 	padding: 8px 4px;
 }
 
 #gc-calendar .fc-daygrid-day {
-	background: #111;
+	background: var(--gc-bg);
 }
 
 #gc-calendar .fc-daygrid-day:hover {
-	background: #1a1a1a;
+	background: var(--gc-bg-hover);
 }
 
 #gc-calendar .fc-daygrid-day-number {
 	font-size: 13px;
-	color: #888;
+	color: var(--gc-text-muted);
 	text-decoration: none;
 	padding: 6px 8px;
 	font-weight: 500;
 }
 
 #gc-calendar .fc-day-today .fc-daygrid-day-number {
-	background: #ac00fb;
+	background: var(--gc-accent);
 	color: #fff;
 	border-radius: 50%;
 	width: 26px;
@@ -167,11 +200,15 @@
 }
 
 #gc-calendar .fc-day-today {
-	background: #1a0d26 !important;
+	background: var(--gc-accent-light) !important;
 }
 
 #gc-calendar .fc-day-other .fc-daygrid-day-number {
-	color: #444;
+	color: var(--gc-text-faint);
+}
+
+#gc-calendar .fc-day-other {
+	background: var(--gc-bg-other);
 }
 
 /* ── Event cards ─────────────────────────────────────────────────────────── */
@@ -188,7 +225,7 @@
 
 #gc-calendar .fc-daygrid-event:hover {
 	transform: translateY(-2px);
-	box-shadow: 0 6px 18px rgba(0, 0, 0, .5);
+	box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
 	z-index: 5;
 }
 
@@ -197,7 +234,6 @@
 	width: 100%;
 }
 
-/* Card wrapper */
 .gc-event-card {
 	width: 100%;
 	overflow: hidden;
@@ -205,12 +241,10 @@
 	border-radius: 6px;
 }
 
-/* With cover: tall card */
 .gc-event-card--cover {
 	height: 72px;
 }
 
-/* Cover image fills the card */
 .gc-event-cover {
 	position: absolute;
 	inset: 0;
@@ -221,18 +255,12 @@
 	display: block;
 }
 
-/* Dark gradient so title stays readable */
 .gc-event-overlay {
 	position: absolute;
 	inset: 0;
-	background: linear-gradient(
-		to bottom,
-		transparent 20%,
-		rgba(0, 0, 0, .75) 100%
-	);
+	background: linear-gradient(to bottom, transparent 20%, rgba(0, 0, 0, .7) 100%);
 }
 
-/* Title */
 .gc-event-label {
 	position: relative;
 	z-index: 1;
@@ -245,7 +273,6 @@
 	color: #fff;
 }
 
-/* Title inside cover card: pinned to bottom */
 .gc-event-card--cover .gc-event-label {
 	position: absolute;
 	bottom: 0;
@@ -255,35 +282,34 @@
 	text-shadow: 0 1px 4px rgba(0, 0, 0, .9);
 }
 
-/* Title in plain pill (no cover) */
 .gc-event-card:not(.gc-event-card--cover) .gc-event-label {
 	padding: 3px 7px;
 }
 
-/* List view */
+/* ── List view ───────────────────────────────────────────────────────────── */
 
 #gc-calendar .fc-list {
-	background: #111;
-	border-color: #2a2a2a;
+	background: var(--gc-bg);
+	border-color: var(--gc-border);
 }
 
 #gc-calendar .fc-list-day-cushion {
-	background: #1a1a1a;
+	background: var(--gc-bg-subtle);
 }
 
 #gc-calendar .fc-list-day-text,
 #gc-calendar .fc-list-day-side-text {
-	color: #96eefe;
+	color: var(--gc-accent);
 	text-decoration: none;
 }
 
 #gc-calendar .fc-list-event:hover td {
-	background: #1e1e1e;
+	background: var(--gc-bg-hover);
 	cursor: pointer;
 }
 
 #gc-calendar .fc-list-event-title a {
-	color: #e0e0e0;
+	color: var(--gc-text);
 	text-decoration: none;
 }
 
@@ -292,18 +318,18 @@
 }
 
 #gc-calendar .fc-list-empty {
-	background: #111;
-	color: #555;
+	background: var(--gc-bg);
+	color: var(--gc-text-muted);
 }
 
-/* Week / day time grid */
+/* ── Week / day time grid ────────────────────────────────────────────────── */
 
 #gc-calendar .fc-timegrid-slot {
-	border-color: #222 !important;
+	border-color: var(--gc-border) !important;
 }
 
 #gc-calendar .fc-timegrid-slot-label {
-	color: #555;
+	color: var(--gc-text-muted);
 	font-size: 11px;
 }
 
@@ -314,7 +340,7 @@
 	font-weight: 600;
 }
 
-/* ── Hover tooltip ───────────────────────────────────────────────────────── */
+/* ── Hover tooltip (always dark — floating overlay) ──────────────────────── */
 
 .gc-tooltip {
 	position: fixed;
@@ -326,14 +352,13 @@
 	font-size: 12.5px;
 	max-width: 220px;
 	pointer-events: none;
-	box-shadow: 0 8px 32px rgba(0, 0, 0, .6), 0 0 0 1px rgba(172, 0, 251, .3);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, .5), 0 0 0 1px rgba(172, 0, 251, .3);
 	line-height: 1.5;
 	border: 1px solid #2a2a2a;
 }
 
 .gc-tip-cover {
 	display: block;
-	width: 100%;
 	height: 120px;
 	object-fit: cover;
 	object-position: center top;
@@ -365,7 +390,7 @@
 
 .gc-tip-date {
 	font-size: 12px;
-	color: #96eefe;
+	color: #0ea5e9;
 	font-weight: 500;
 }
 
@@ -386,7 +411,7 @@
 	font-weight: 600;
 }
 
-/* ── Detail modal ────────────────────────────────────────────────────────── */
+/* ── Detail modal (always dark — full-screen overlay) ────────────────────── */
 
 .gc-detail-modal {
 	position: fixed;
@@ -462,7 +487,7 @@
 .gc-detail-cover-overlay {
 	position: absolute;
 	inset: 0;
-	background: linear-gradient( to bottom, transparent 40%, #1a1a1a 100% );
+	background: linear-gradient(to bottom, transparent 40%, #1a1a1a 100%);
 }
 
 .gc-detail-body {
