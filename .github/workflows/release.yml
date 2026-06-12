@@ -1,0 +1,32 @@
+name: Attach release zip
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build zip
+        run: |
+          mkdir game-calendar
+          rsync -a . game-calendar/ \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.wp-env*' \
+            --exclude='.claude' \
+            --exclude='node_modules' \
+            --exclude='*.zip'
+          zip -r game-calendar.zip game-calendar/
+
+      - name: Upload to release
+        run: gh release upload "${{ github.ref_name }}" game-calendar.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
