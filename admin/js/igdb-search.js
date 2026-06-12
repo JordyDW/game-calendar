@@ -112,4 +112,38 @@
 		}
 	}
 
+	// ── WP media library picker for cover image fields ──────────────────────
+	$( document ).on( 'click', '.gc-media-btn', function ( e ) {
+		e.preventDefault();
+		var btn        = $( this );
+		var targetSel  = btn.data( 'target' );
+		var previewSel = btn.data( 'preview' );
+
+		var frame = wp.media( {
+			title:    btn.data( 'title' ) || 'Choose Cover Image',
+			button:   { text: 'Use this image' },
+			multiple: false,
+		} );
+
+		frame.on( 'select', function () {
+			var attachment = frame.state().get( 'selection' ).first().toJSON();
+			var url = ( attachment.sizes && attachment.sizes.large )
+				? attachment.sizes.large.url
+				: attachment.url;
+
+			$( targetSel ).val( url );
+
+			var preview = $( previewSel );
+			if ( preview.length ) {
+				preview.attr( 'src', url ).show();
+			} else {
+				$( '<img style="max-height:80px;margin-top:6px;" />' )
+					.attr( 'src', url )
+					.insertAfter( targetSel );
+			}
+		} );
+
+		frame.open();
+	} );
+
 } )( jQuery );

@@ -213,7 +213,9 @@
 
 /* ── Event cards ─────────────────────────────────────────────────────────── */
 
+/* Force background from FullCalendar's color prop — prevents theme overrides. */
 #gc-calendar .fc-daygrid-event {
+	background-color: var(--fc-event-bg-color, #ac00fb) !important;
 	border: none !important;
 	border-radius: 6px;
 	cursor: pointer;
@@ -221,6 +223,11 @@
 	margin-bottom: 3px;
 	padding: 0;
 	overflow: hidden;
+}
+
+/* Hide events on days that belong to adjacent months. */
+#gc-calendar .fc-day-other .fc-daygrid-day-events {
+	display: none;
 }
 
 #gc-calendar .fc-daygrid-event:hover {

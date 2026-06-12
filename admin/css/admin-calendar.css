@@ -338,6 +338,30 @@
 	box-shadow: 0 0 0 2px rgba(34, 113, 177, .18);
 }
 
+.gc-cover-field {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.gc-cover-field .gc-input {
+	flex: 1;
+}
+
+.gc-date-time-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.gc-date-time-row .gc-input[type="date"] {
+	flex: 2;
+}
+
+.gc-date-time-row .gc-input[type="time"] {
+	flex: 1;
+}
+
 .gc-cover-preview {
 	max-height: 80px;
 	border-radius: 4px;
@@ -704,4 +728,119 @@ body.gc-modal-open {
 
 .gc-settings-footer {
 	padding: 20px 0 0;
+}
+
+/* ── All Items page ───────────────────────────────────────────────────────── */
+
+.gc-entries-table .column-type   { width: 90px; }
+.gc-entries-table .column-date   { width: 130px; }
+.gc-entries-table .column-status { width: 100px; }
+
+.gc-entry-badge {
+	display: inline-block;
+	padding: 2px 7px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	white-space: nowrap;
+}
+
+.gc-entry-badge--release {
+	background: #e8f0fe;
+	color: #1967d2;
+}
+
+.gc-entry-badge--event {
+	background: #e6f4ea;
+	color: #137333;
+}
+
+.gc-entry-badge--dlc {
+	background: #fce8e6;
+	color: #c5221f;
+}
+
+.gc-status-dot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	margin-right: 5px;
+	vertical-align: middle;
+}
+
+.gc-status-dot--published { background: #00a32a; }
+.gc-status-dot--draft     { background: #dba617; }
+
+/* Quick Edit row */
+
+.gc-qe-row td {
+	padding: 0 !important;
+	background: #f6f7f7;
+	border-top: 1px solid #c3c4c7;
+	border-bottom: 1px solid #c3c4c7;
+}
+
+.gc-qe-form {
+	padding: 12px 16px;
+}
+
+.gc-qe-top {
+	margin-bottom: 10px;
+}
+
+.gc-qe-mid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 24px;
+	margin-bottom: 12px;
+	align-items: flex-end;
+}
+
+.gc-qe-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.gc-qe-field--title {
+	width: 100%;
+}
+
+.gc-qe-field label {
+	font-size: 12px;
+	font-weight: 600;
+	color: #3c434a;
+}
+
+.gc-qe-field input[type="text"],
+.gc-qe-field select {
+	min-width: 160px;
+}
+
+.gc-qe-field--title input[type="text"] {
+	width: 100%;
+}
+
+.gc-qe-date-row {
+	display: flex;
+	gap: 6px;
+}
+
+.gc-qe-footer {
+	border-top: 1px solid #dcdcde;
+	padding-top: 10px;
+}
+
+/* Flash animation on row update */
+
+@keyframes gc-row-flash {
+	0%   { background-color: #fffbe5; }
+	100% { background-color: transparent; }
+}
+
+.gc-row-updated {
+	animation: gc-row-flash 1.4s ease-out forwards;
 }

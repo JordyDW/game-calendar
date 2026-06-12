@@ -119,6 +119,11 @@ class GC_Calendar_Query {
 					if ( ! $cover && has_post_thumbnail( $post->ID ) ) {
 						$cover = get_the_post_thumbnail_url( $post->ID, 'thumbnail' );
 					}
+				} elseif ( 'gc_event' === $post_type ) {
+					$cover = get_post_meta( $post->ID, 'gc_event_cover_url', true );
+					if ( ! $cover && has_post_thumbnail( $post->ID ) ) {
+						$cover = get_the_post_thumbnail_url( $post->ID, 'thumbnail' );
+					}
 				}
 
 				$event = array(
@@ -153,9 +158,7 @@ class GC_Calendar_Query {
 	}
 
 	public function shortcode( $atts ) {
-		$atts = shortcode_atts( array(
-			'height' => '650px',
-		), $atts, 'game_calendar' );
+		$atts = shortcode_atts( array(), $atts, 'game_calendar' );
 
 		ob_start();
 		include GC_PLUGIN_DIR . 'templates/calendar.php';
@@ -206,6 +209,7 @@ class GC_Calendar_Query {
 			return;
 		}
 
+		wp_enqueue_media();
 		wp_enqueue_style( 'gc-admin', GC_PLUGIN_URL . 'admin/css/admin.css', array(), GC_VERSION );
 		wp_enqueue_script(
 			'gc-igdb-search',

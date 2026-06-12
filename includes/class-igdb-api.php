@@ -83,8 +83,15 @@ class GC_IGDB_API {
 	}
 
 	public function search_games( $query ) {
+		$search_mode = GC_Settings::get( 'gc_igdb_search_mode', 'future_releases' );
+
+		$where = ( 'future_releases' === $search_mode )
+			? 'where first_release_date >= ' . time() . '; '
+			: '';
+
 		$body = 'search "' . addslashes( $query ) . '"; '
 			. 'fields id,name,url,cover.url,first_release_date,genres.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,platforms.name; '
+			. $where
 			. 'limit 8;';
 
 		return $this->request( 'games', $body );

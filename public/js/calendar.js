@@ -86,10 +86,12 @@
 		} );
 
 		var calendar = new FullCalendar.Calendar( el, {
-			initialView:  'dayGridMonth',
-			nowIndicator: true,
-			firstDay:     1,
-			locale:       'en-GB',
+			initialView:         'dayGridMonth',
+			height:              'auto',
+			showNonCurrentDates: false,
+			nowIndicator:        true,
+			firstDay:            1,
+			locale:              'en-GB',
 			headerToolbar: {
 				left:   'prev,next today',
 				center: 'title',

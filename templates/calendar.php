@@ -2,7 +2,6 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-$calendar_height = isset( $atts['height'] ) ? esc_attr( $atts['height'] ) : '650px';
 ?>
 <div class="gc-calendar-wrap">
 	<div class="gc-filters">
@@ -18,7 +17,7 @@ $calendar_height = isset( $atts['height'] ) ? esc_attr( $atts['height'] ) : '650
 		</label>
 	</div>
 
-	<div id="gc-calendar" style="height:<?php echo $calendar_height; ?>"></div>
+	<div id="gc-calendar"></div>
 	<div id="gc-event-tooltip" class="gc-tooltip" hidden></div>
 
 	<div id="gc-detail-modal" class="gc-detail-modal" hidden role="dialog" aria-modal="true" aria-labelledby="gc-detail-title">

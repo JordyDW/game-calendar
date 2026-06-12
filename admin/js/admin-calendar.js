@@ -10,6 +10,7 @@
 		initCalendar();
 		initModal();
 		initIGDB();
+		initCoverPickers();
 	} );
 
 	// ── Calendar ────────────────────────────────────────────────────────────
@@ -96,8 +97,11 @@
 
 		if ( dateStr ) {
 			var d = dateStr.split( 'T' )[ 0 ];
-			document.getElementById( 'gc-modal-date' ).value  = d;
-			document.getElementById( 'gc-modal-start' ).value = allDay ? ( d + 'T09:00' ) : dateStr.substring( 0, 16 );
+			document.getElementById( 'gc-modal-date' ).value           = d;
+			document.getElementById( 'gc-modal-start-date' ).value     = d;
+			if ( ! allDay && dateStr.indexOf( 'T' ) !== -1 ) {
+				document.getElementById( 'gc-modal-start-time' ).value = dateStr.substring( 11, 16 );
+			}
 		}
 
 		modal.hidden = false;
@@ -124,15 +128,19 @@
 		modal.querySelectorAll( '.gc-tab' ).forEach( function ( t ) { t.classList.remove( 'gc-tab--active' ); } );
 		modal.querySelector( '[data-type="gc_release"]' ).classList.add( 'gc-tab--active' );
 
-		[ 'gc-modal-igdb', 'gc-modal-title', 'gc-modal-date', 'gc-modal-start', 'gc-modal-end',
+		[ 'gc-modal-igdb', 'gc-modal-title', 'gc-modal-date',
+		  'gc-modal-start-date', 'gc-modal-start-time', 'gc-modal-end-date', 'gc-modal-end-time',
 		  'gc-modal-event-url', 'gc-modal-developer', 'gc-modal-publisher', 'gc-modal-genre',
-		  'gc-modal-platforms', 'gc-modal-url', 'gc-modal-igdb-id', 'gc-modal-cover-url' ].forEach( function ( id ) {
+		  'gc-modal-platforms', 'gc-modal-url', 'gc-modal-igdb-id',
+		  'gc-modal-cover-url', 'gc-modal-event-cover-url' ].forEach( function ( id ) {
 			var el = document.getElementById( id );
 			if ( el ) el.value = '';
 		} );
 
-		var coverRow = document.getElementById( 'gc-modal-cover-row' );
-		if ( coverRow ) coverRow.style.display = 'none';
+		[ 'gc-modal-cover-img', 'gc-modal-event-cover-img' ].forEach( function ( id ) {
+			var img = document.getElementById( id );
+			if ( img ) { img.src = ''; img.style.display = 'none'; }
+		} );
 
 		var err = document.getElementById( 'gc-modal-error' );
 		err.hidden      = true;
@@ -194,9 +202,24 @@
 			data.gc_platforms    = document.getElementById( 'gc-modal-platforms' ).value;
 			data.gc_url          = document.getElementById( 'gc-modal-url' ).value;
 		} else if ( 'gc_event' === activeType ) {
-			data.gc_event_start = document.getElementById( 'gc-modal-start' ).value;
-			data.gc_event_end   = document.getElementById( 'gc-modal-end' ).value;
-			data.gc_event_url   = document.getElementById( 'gc-modal-event-url' ).value;
+			var startDateInput = document.getElementById( 'gc-modal-start-date' );
+			if ( ! startDateInput.value ) {
+				startDateInput.focus();
+				showModalError( 'Start date is required.' );
+				saveBtn.textContent = 'Save';
+				saveBtn.disabled    = false;
+				return;
+			}
+			var startTime = document.getElementById( 'gc-modal-start-time' ).value;
+			data.gc_event_start = startTime ? startDateInput.value + 'T' + startTime : startDateInput.value;
+
+			var endDateVal = document.getElementById( 'gc-modal-end-date' ).value;
+			var endTimeVal = document.getElementById( 'gc-modal-end-time' ).value;
+			if ( endDateVal ) {
+				data.gc_event_end = endTimeVal ? endDateVal + 'T' + endTimeVal : endDateVal;
+			}
+			data.gc_event_url       = document.getElementById( 'gc-modal-event-url' ).value;
+			data.gc_event_cover_url = document.getElementById( 'gc-modal-event-cover-url' ).value;
 		}
 
 		$.post( gcAdminCal.ajaxUrl, data )
@@ -306,9 +329,7 @@
 
 		if ( game.cover ) {
 			var img = document.getElementById( 'gc-modal-cover-img' );
-			var row = document.getElementById( 'gc-modal-cover-row' );
-			if ( img ) img.src = game.cover;
-			if ( row ) row.style.display = '';
+			if ( img ) { img.src = game.cover; img.style.display = ''; }
 		}
 
 		// Flash every visible text input that received a value.
@@ -329,6 +350,55 @@
 	function setVal( id, val ) {
 		var el = document.getElementById( id );
 		if ( el && val ) el.value = val;
+	}
+
+	// ── Cover image pickers ──────────────────────────────────────────────────
+
+	var coverPickerMap = {
+		'gc-modal-cover-pick':       { input: 'gc-modal-cover-url',       preview: 'gc-modal-cover-img' },
+		'gc-modal-event-cover-pick': { input: 'gc-modal-event-cover-url', preview: 'gc-modal-event-cover-img' },
+	};
+
+	function initCoverPickers() {
+		// Event delegation so it works regardless of when the modal renders.
+		$( document ).on( 'click', '#gc-modal-cover-pick, #gc-modal-event-cover-pick', function ( e ) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			var cfg = coverPickerMap[ this.id ];
+			if ( ! cfg ) return;
+
+			if ( typeof wp === 'undefined' || typeof wp.media !== 'function' ) {
+				console.warn( 'Game Calendar: wp.media is not available.' );
+				return;
+			}
+
+			var frame = wp.media( {
+				title:    'Choose Cover Image',
+				button:   { text: 'Use this image' },
+				multiple: false,
+			} );
+
+			frame.on( 'select', function () {
+				var att = frame.state().get( 'selection' ).first().toJSON();
+				var url = ( att.sizes && att.sizes.large ) ? att.sizes.large.url : att.url;
+				$( '#' + cfg.input ).val( url ).trigger( 'input' );
+			} );
+
+			frame.open();
+		} );
+
+		// Live preview when a URL is typed manually.
+		$( document ).on( 'input', '#gc-modal-cover-url, #gc-modal-event-cover-url', function () {
+			var url     = $( this ).val().trim();
+			var prevId  = this.id === 'gc-modal-cover-url' ? 'gc-modal-cover-img' : 'gc-modal-event-cover-img';
+			var preview = $( '#' + prevId );
+			if ( url ) {
+				preview.attr( 'src', url ).show();
+			} else {
+				preview.attr( 'src', '' ).hide();
+			}
+		} );
 	}
 
 	// ── Edit existing entry in modal ─────────────────────────────────────────
@@ -366,14 +436,31 @@
 				setVal( 'gc-modal-cover-url', d.gc_cover_url );
 				if ( d.gc_cover_url ) {
 					var img = document.getElementById( 'gc-modal-cover-img' );
-					var row = document.getElementById( 'gc-modal-cover-row' );
-					if ( img ) img.src = d.gc_cover_url;
-					if ( row ) row.style.display = '';
+					if ( img ) { img.src = d.gc_cover_url; img.style.display = ''; }
 				}
 			} else {
-				setVal( 'gc-modal-start',     d.gc_event_start );
-				setVal( 'gc-modal-end',       d.gc_event_end );
-				setVal( 'gc-modal-event-url', d.gc_event_url );
+				var startRaw = d.gc_event_start || '';
+				if ( startRaw.indexOf( 'T' ) !== -1 ) {
+					var sp = startRaw.split( 'T' );
+					setVal( 'gc-modal-start-date', sp[ 0 ] );
+					setVal( 'gc-modal-start-time', sp[ 1 ] );
+				} else {
+					setVal( 'gc-modal-start-date', startRaw );
+				}
+				var endRaw = d.gc_event_end || '';
+				if ( endRaw.indexOf( 'T' ) !== -1 ) {
+					var ep = endRaw.split( 'T' );
+					setVal( 'gc-modal-end-date', ep[ 0 ] );
+					setVal( 'gc-modal-end-time', ep[ 1 ] );
+				} else {
+					setVal( 'gc-modal-end-date', endRaw );
+				}
+				setVal( 'gc-modal-event-url',       d.gc_event_url );
+				setVal( 'gc-modal-event-cover-url', d.gc_event_cover_url );
+				if ( d.gc_event_cover_url ) {
+					var evtImg = document.getElementById( 'gc-modal-event-cover-img' );
+					if ( evtImg ) { evtImg.src = d.gc_event_cover_url; evtImg.style.display = ''; }
+				}
 			}
 
 			editingPostId = parseInt( d.post_id, 10 );

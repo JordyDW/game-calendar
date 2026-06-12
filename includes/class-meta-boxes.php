@@ -74,12 +74,13 @@ class GC_Meta_Boxes {
 					<td><input type="text" id="gc_genre" name="gc_genre" value="<?php echo esc_attr( $genre ); ?>" style="width:100%;" /></td>
 				</tr>
 				<tr>
-					<th><label for="gc_cover_url"><?php esc_html_e( 'Cover Image URL', 'game-calendar' ); ?></label></th>
+					<th><label for="gc_cover_url"><?php esc_html_e( 'Cover Image', 'game-calendar' ); ?></label></th>
 					<td>
-						<input type="url" id="gc_cover_url" name="gc_cover_url" value="<?php echo esc_attr( $cover_url ); ?>" style="width:100%;" />
-						<?php if ( $cover_url ) : ?>
-							<br /><img src="<?php echo esc_url( $cover_url ); ?>" style="max-height:80px;margin-top:6px;" />
-						<?php endif; ?>
+						<div style="display:flex;gap:8px;align-items:center;">
+							<input type="url" id="gc_cover_url" name="gc_cover_url" value="<?php echo esc_attr( $cover_url ); ?>" style="flex:1;" />
+							<button type="button" class="button gc-media-btn" data-target="#gc_cover_url" data-preview="#gc_cover_preview"><?php esc_html_e( 'Choose Image', 'game-calendar' ); ?></button>
+						</div>
+						<img id="gc_cover_preview" src="<?php echo esc_url( $cover_url ); ?>" style="max-height:80px;margin-top:6px;<?php echo $cover_url ? '' : 'display:none;'; ?>" />
 					</td>
 				</tr>
 				<tr>
@@ -98,22 +99,62 @@ class GC_Meta_Boxes {
 
 	public function render_event_meta_box( $post ) {
 		wp_nonce_field( 'gc_event_save', 'gc_event_nonce' );
-		$event_start = get_post_meta( $post->ID, 'gc_event_start', true );
-		$event_end   = get_post_meta( $post->ID, 'gc_event_end', true );
-		$event_url   = get_post_meta( $post->ID, 'gc_event_url', true );
+		$event_start_raw = get_post_meta( $post->ID, 'gc_event_start', true );
+		$event_end_raw   = get_post_meta( $post->ID, 'gc_event_end', true );
+		$event_url       = get_post_meta( $post->ID, 'gc_event_url', true );
+		$event_cover_url = get_post_meta( $post->ID, 'gc_event_cover_url', true );
+
+		$event_start_date = '';
+		$event_start_time = '';
+		if ( $event_start_raw ) {
+			if ( false !== strpos( $event_start_raw, 'T' ) ) {
+				list( $event_start_date, $event_start_time ) = explode( 'T', $event_start_raw, 2 );
+			} else {
+				$event_start_date = $event_start_raw;
+			}
+		}
+		$event_end_date = '';
+		$event_end_time = '';
+		if ( $event_end_raw ) {
+			if ( false !== strpos( $event_end_raw, 'T' ) ) {
+				list( $event_end_date, $event_end_time ) = explode( 'T', $event_end_raw, 2 );
+			} else {
+				$event_end_date = $event_end_raw;
+			}
+		}
 		?>
 		<table class="form-table gc-form-table">
 			<tr>
-				<th><label for="gc_event_start"><?php esc_html_e( 'Start Date & Time', 'game-calendar' ); ?></label></th>
-				<td><input type="datetime-local" id="gc_event_start" name="gc_event_start" value="<?php echo esc_attr( $event_start ); ?>" /></td>
+				<th><label><?php esc_html_e( 'Start Date', 'game-calendar' ); ?></label></th>
+				<td>
+					<div style="display:flex;gap:8px;align-items:center;">
+						<input type="date" id="gc_event_start_date" name="gc_event_start_date" value="<?php echo esc_attr( $event_start_date ); ?>" />
+						<input type="time" id="gc_event_start_time" name="gc_event_start_time" value="<?php echo esc_attr( $event_start_time ); ?>" />
+					</div>
+				</td>
 			</tr>
 			<tr>
-				<th><label for="gc_event_end"><?php esc_html_e( 'End Date & Time', 'game-calendar' ); ?></label></th>
-				<td><input type="datetime-local" id="gc_event_end" name="gc_event_end" value="<?php echo esc_attr( $event_end ); ?>" /></td>
+				<th><label><?php esc_html_e( 'End Date', 'game-calendar' ); ?></label></th>
+				<td>
+					<div style="display:flex;gap:8px;align-items:center;">
+						<input type="date" id="gc_event_end_date" name="gc_event_end_date" value="<?php echo esc_attr( $event_end_date ); ?>" />
+						<input type="time" id="gc_event_end_time" name="gc_event_end_time" value="<?php echo esc_attr( $event_end_time ); ?>" />
+					</div>
+				</td>
 			</tr>
 			<tr>
 				<th><label for="gc_event_url"><?php esc_html_e( 'Event URL', 'game-calendar' ); ?></label></th>
 				<td><input type="url" id="gc_event_url" name="gc_event_url" value="<?php echo esc_attr( $event_url ); ?>" style="width:100%;" placeholder="https://…" /></td>
+			</tr>
+			<tr>
+				<th><label for="gc_event_cover_url"><?php esc_html_e( 'Cover Image', 'game-calendar' ); ?></label></th>
+				<td>
+					<div style="display:flex;gap:8px;align-items:center;">
+						<input type="url" id="gc_event_cover_url" name="gc_event_cover_url" value="<?php echo esc_attr( $event_cover_url ); ?>" style="flex:1;" />
+						<button type="button" class="button gc-media-btn" data-target="#gc_event_cover_url" data-preview="#gc_event_cover_preview"><?php esc_html_e( 'Choose Image', 'game-calendar' ); ?></button>
+					</div>
+					<img id="gc_event_cover_preview" src="<?php echo esc_url( $event_cover_url ); ?>" style="max-height:80px;margin-top:6px;<?php echo $event_cover_url ? '' : 'display:none;'; ?>" />
+				</td>
 			</tr>
 		</table>
 		<?php
@@ -194,11 +235,27 @@ class GC_Meta_Boxes {
 			if ( ! isset( $_POST['gc_event_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['gc_event_nonce'] ), 'gc_event_save' ) ) {
 				return;
 			}
-			$fields = array( 'gc_event_start', 'gc_event_end', 'gc_event_url' );
-			foreach ( $fields as $field ) {
-				if ( isset( $_POST[ $field ] ) ) {
-					update_post_meta( $post_id, $field, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
+			if ( isset( $_POST['gc_event_start_date'] ) ) {
+				$start_date = sanitize_text_field( wp_unslash( $_POST['gc_event_start_date'] ) );
+				if ( $start_date ) {
+					$start_time = isset( $_POST['gc_event_start_time'] ) ? sanitize_text_field( wp_unslash( $_POST['gc_event_start_time'] ) ) : '';
+					update_post_meta( $post_id, 'gc_event_start', $start_time ? $start_date . 'T' . $start_time : $start_date );
 				}
+			}
+			if ( isset( $_POST['gc_event_end_date'] ) ) {
+				$end_date = sanitize_text_field( wp_unslash( $_POST['gc_event_end_date'] ) );
+				if ( $end_date ) {
+					$end_time = isset( $_POST['gc_event_end_time'] ) ? sanitize_text_field( wp_unslash( $_POST['gc_event_end_time'] ) ) : '';
+					update_post_meta( $post_id, 'gc_event_end', $end_time ? $end_date . 'T' . $end_time : $end_date );
+				} else {
+					delete_post_meta( $post_id, 'gc_event_end' );
+				}
+			}
+			if ( isset( $_POST['gc_event_url'] ) ) {
+				update_post_meta( $post_id, 'gc_event_url', sanitize_text_field( wp_unslash( $_POST['gc_event_url'] ) ) );
+			}
+			if ( isset( $_POST['gc_event_cover_url'] ) ) {
+				update_post_meta( $post_id, 'gc_event_cover_url', esc_url_raw( wp_unslash( $_POST['gc_event_cover_url'] ) ) );
 			}
 		}
 

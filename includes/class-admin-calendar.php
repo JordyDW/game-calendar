@@ -28,6 +28,7 @@ class GC_Admin_Calendar {
 
 		// Calendar must be first so clicking the parent menu item lands here.
 		add_submenu_page( 'game-calendar', __( 'Calendar', 'game-calendar' ),       __( 'Calendar', 'game-calendar' ),       'edit_posts',    'game-calendar',                       array( $this, 'render_page' ) );
+		add_submenu_page( 'game-calendar', __( 'All Items', 'game-calendar' ),       __( 'All Items', 'game-calendar' ),       'edit_posts',    'gc-entries',                          array( $this, 'render_entries_page' ) );
 		add_submenu_page( 'game-calendar', __( 'Settings', 'game-calendar' ),        __( 'Settings', 'game-calendar' ),        'manage_options', 'gc-settings',                        array( new GC_Settings(), 'render' ) );
 	}
 
@@ -48,10 +49,21 @@ class GC_Admin_Calendar {
 	}
 
 	public function enqueue_assets( $hook ) {
+		if ( 'game-calendar_page_gc-entries' === $hook ) {
+			wp_enqueue_style( 'gc-admin-calendar', GC_PLUGIN_URL . 'admin/css/admin-calendar.css', array(), GC_VERSION );
+			wp_enqueue_script( 'gc-entries', GC_PLUGIN_URL . 'admin/js/entries.js', array( 'jquery' ), GC_VERSION, true );
+			wp_localize_script( 'gc-entries', 'gcEntries', array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'gc_admin_cal' ),
+			) );
+			return;
+		}
+
 		if ( 'toplevel_page_game-calendar' !== $hook ) {
 			return;
 		}
 
+		wp_enqueue_media();
 		wp_enqueue_style( 'fullcalendar', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css', array(), '6.1.11' );
 		wp_enqueue_script( 'fullcalendar', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js', array(), '6.1.11', true );
 		wp_enqueue_style( 'gc-admin-calendar', GC_PLUGIN_URL . 'admin/css/admin-calendar.css', array( 'fullcalendar' ), GC_VERSION );
@@ -132,12 +144,18 @@ class GC_Admin_Calendar {
 						</div>
 
 						<div class="gc-field gc-field--event">
-							<label class="gc-label" for="gc-modal-start"><?php esc_html_e( 'Start', 'game-calendar' ); ?></label>
-							<input type="datetime-local" id="gc-modal-start" class="gc-input" />
+							<label class="gc-label"><?php esc_html_e( 'Start', 'game-calendar' ); ?> <span class="gc-required">*</span></label>
+							<div class="gc-date-time-row">
+								<input type="date" id="gc-modal-start-date" class="gc-input" />
+								<input type="time" id="gc-modal-start-time" class="gc-input" />
+							</div>
 						</div>
 						<div class="gc-field gc-field--event">
-							<label class="gc-label" for="gc-modal-end"><?php esc_html_e( 'End', 'game-calendar' ); ?></label>
-							<input type="datetime-local" id="gc-modal-end" class="gc-input" />
+							<label class="gc-label"><?php esc_html_e( 'End', 'game-calendar' ); ?></label>
+							<div class="gc-date-time-row">
+								<input type="date" id="gc-modal-end-date" class="gc-input" />
+								<input type="time" id="gc-modal-end-time" class="gc-input" />
+							</div>
 						</div>
 						<div class="gc-field gc-field--event">
 							<label class="gc-label" for="gc-modal-event-url"><?php esc_html_e( 'Event URL', 'game-calendar' ); ?></label>
@@ -165,13 +183,25 @@ class GC_Admin_Calendar {
 							<input type="url" id="gc-modal-url" class="gc-input" placeholder="https://www.igdb.com/games/…" />
 						</div>
 
-						<div class="gc-field gc-field--release" id="gc-modal-cover-row" style="display:none;">
-							<label class="gc-label"><?php esc_html_e( 'Cover', 'game-calendar' ); ?></label>
-							<img id="gc-modal-cover-img" src="" alt="" class="gc-cover-preview" />
+						<div class="gc-field gc-field--release">
+							<label class="gc-label" for="gc-modal-cover-url"><?php esc_html_e( 'Cover Image', 'game-calendar' ); ?></label>
+							<div class="gc-cover-field">
+								<input type="url" id="gc-modal-cover-url" class="gc-input" placeholder="https://…" />
+								<button type="button" id="gc-modal-cover-pick" class="button"><?php esc_html_e( 'Choose', 'game-calendar' ); ?></button>
+							</div>
+							<img id="gc-modal-cover-img" src="" alt="" class="gc-cover-preview" style="display:none;" />
+						</div>
+
+						<div class="gc-field gc-field--event">
+							<label class="gc-label" for="gc-modal-event-cover-url"><?php esc_html_e( 'Cover Image', 'game-calendar' ); ?></label>
+							<div class="gc-cover-field">
+								<input type="url" id="gc-modal-event-cover-url" class="gc-input" placeholder="https://…" />
+								<button type="button" id="gc-modal-event-cover-pick" class="button"><?php esc_html_e( 'Choose', 'game-calendar' ); ?></button>
+							</div>
+							<img id="gc-modal-event-cover-img" src="" alt="" class="gc-cover-preview" style="display:none;" />
 						</div>
 
 						<input type="hidden" id="gc-modal-igdb-id" />
-						<input type="hidden" id="gc-modal-cover-url" />
 					</div>
 
 					<div class="gc-modal-foot">
@@ -204,11 +234,15 @@ class GC_Admin_Calendar {
 		if ( $editing_id ) {
 			// Update existing post.
 			$post = get_post( $editing_id );
-			if ( ! $post || ! in_array( $post->post_type, array( 'gc_release', 'gc_event' ), true ) ) {
+			if ( ! $post || ! in_array( $post->post_type, array( 'gc_release', 'gc_event', 'gc_dlc' ), true ) ) {
 				wp_send_json_error( array( 'message' => __( 'Entry not found.', 'game-calendar' ) ) );
 			}
-			$post_type = $post->post_type;
-			$result    = wp_update_post( array( 'ID' => $editing_id, 'post_title' => $title ), true );
+			$post_type  = $post->post_type;
+			$update_arr = array( 'ID' => $editing_id, 'post_title' => $title );
+			if ( isset( $_POST['post_status'] ) && in_array( $_POST['post_status'], array( 'publish', 'draft' ), true ) ) {
+				$update_arr['post_status'] = sanitize_key( wp_unslash( $_POST['post_status'] ) );
+			}
+			$result = wp_update_post( $update_arr, true );
 			if ( is_wp_error( $result ) ) {
 				wp_send_json_error( array( 'message' => $result->get_error_message() ) );
 			}
@@ -229,13 +263,15 @@ class GC_Admin_Calendar {
 			}
 		}
 
-		$text_fields = array( 'gc_release_date', 'gc_event_start', 'gc_event_end', 'gc_event_url', 'gc_developer', 'gc_publisher', 'gc_genre', 'gc_cover_url' );
-		if ( ! empty( $_POST['gc_url'] ) ) {
-			update_post_meta( $post_id, 'gc_url', esc_url_raw( wp_unslash( $_POST['gc_url'] ) ) );
-		}
+		$text_fields = array( 'gc_release_date', 'gc_event_start', 'gc_event_end', 'gc_event_url', 'gc_developer', 'gc_publisher', 'gc_genre' );
 		foreach ( $text_fields as $field ) {
 			if ( isset( $_POST[ $field ] ) && '' !== $_POST[ $field ] ) {
 				update_post_meta( $post_id, $field, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
+			}
+		}
+		foreach ( array( 'gc_url', 'gc_cover_url', 'gc_event_cover_url' ) as $url_field ) {
+			if ( isset( $_POST[ $url_field ] ) && '' !== $_POST[ $url_field ] ) {
+				update_post_meta( $post_id, $url_field, esc_url_raw( wp_unslash( $_POST[ $url_field ] ) ) );
 			}
 		}
 
@@ -257,18 +293,24 @@ class GC_Admin_Calendar {
 		$color_map = array(
 			'gc_release' => $options['gc_color_release'] ?? '#3b82f6',
 			'gc_event'   => $options['gc_color_event']   ?? '#f97316',
+			'gc_dlc'     => $options['gc_color_release'] ?? '#3b82f6',
 		);
 
 		$date_field = ( 'gc_event' === $post_type ) ? 'gc_event_start' : 'gc_release_date';
+
+		$cover = ( 'gc_event' === $post_type )
+			? get_post_meta( $post_id, 'gc_event_cover_url', true )
+			: get_post_meta( $post_id, 'gc_cover_url', true );
 
 		wp_send_json_success( array(
 			'id'            => $post_id,
 			'title'         => $title,
 			'start'         => get_post_meta( $post_id, $date_field, true ),
-			'color'         => $color_map[ $post_type ],
+			'post_status'   => get_post_field( 'post_status', $post_id ),
+			'color'         => $color_map[ $post_type ] ?? '#3b82f6',
 			'extendedProps' => array(
 				'type'      => $post_type,
-				'cover'     => get_post_meta( $post_id, 'gc_cover_url', true ),
+				'cover'     => $cover,
 				'developer' => get_post_meta( $post_id, 'gc_developer', true ),
 			),
 		) );
@@ -305,9 +347,10 @@ class GC_Admin_Calendar {
 			$platforms               = wp_get_post_terms( $post_id, 'gc_platform', array( 'fields' => 'names' ) );
 			$data['gc_platforms']    = is_wp_error( $platforms ) ? '' : implode( ', ', $platforms );
 		} else {
-			$data['gc_event_start'] = get_post_meta( $post_id, 'gc_event_start', true );
-			$data['gc_event_end']   = get_post_meta( $post_id, 'gc_event_end', true );
-			$data['gc_event_url']   = get_post_meta( $post_id, 'gc_event_url', true );
+			$data['gc_event_start']     = get_post_meta( $post_id, 'gc_event_start', true );
+			$data['gc_event_end']       = get_post_meta( $post_id, 'gc_event_end', true );
+			$data['gc_event_url']       = get_post_meta( $post_id, 'gc_event_url', true );
+			$data['gc_event_cover_url'] = get_post_meta( $post_id, 'gc_event_cover_url', true );
 		}
 
 		wp_send_json_success( $data );
@@ -332,5 +375,187 @@ class GC_Admin_Calendar {
 
 		wp_trash_post( $post_id );
 		wp_send_json_success();
+	}
+
+	public function render_entries_page() {
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			return;
+		}
+
+		$valid_types = array( 'gc_release', 'gc_event', 'gc_dlc' );
+		$type_filter = isset( $_GET['type'] ) ? sanitize_key( $_GET['type'] ) : '';
+		$type_filter = in_array( $type_filter, $valid_types, true ) ? $type_filter : '';
+		$search      = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+		$orderby     = ( isset( $_GET['orderby'] ) && 'date' === $_GET['orderby'] ) ? 'date' : 'date';
+		$order       = ( isset( $_GET['order'] ) && 'asc' === strtolower( $_GET['order'] ) ) ? 'asc' : 'desc';
+
+		$type_labels = array(
+			'gc_release' => __( 'Release', 'game-calendar' ),
+			'gc_event'   => __( 'Event', 'game-calendar' ),
+			'gc_dlc'     => __( 'DLC', 'game-calendar' ),
+		);
+
+		$counts = array();
+		foreach ( $valid_types as $t ) {
+			$c            = wp_count_posts( $t );
+			$counts[ $t ] = ( (int) ( $c->publish ?? 0 ) ) + ( (int) ( $c->draft ?? 0 ) );
+		}
+		$total = array_sum( $counts );
+
+		$query_types = $type_filter ? array( $type_filter ) : $valid_types;
+		$query_args  = array(
+			'post_type'      => $query_types,
+			'posts_per_page' => 300,
+			'post_status'    => array( 'publish', 'draft' ),
+			'no_found_rows'  => true,
+		);
+		if ( $search ) {
+			$query_args['s'] = $search;
+		}
+		$posts = get_posts( $query_args );
+
+		// Sort by event/release date (different meta keys per type, so sort in PHP).
+		usort( $posts, function ( $a, $b ) use ( $order ) {
+			$da = get_post_meta( $a->ID, ( 'gc_event' === $a->post_type ) ? 'gc_event_start' : 'gc_release_date', true ) ?: '0000-00-00';
+			$db = get_post_meta( $b->ID, ( 'gc_event' === $b->post_type ) ? 'gc_event_start' : 'gc_release_date', true ) ?: '0000-00-00';
+			$cmp = strcmp( $da, $db );
+			return 'asc' === $order ? $cmp : -$cmp;
+		} );
+
+		$page_url    = admin_url( 'admin.php?page=gc-entries' );
+		$filter_qs   = ( $type_filter ? '&type=' . $type_filter : '' ) . ( $search ? '&s=' . urlencode( $search ) : '' );
+
+		// Sortable column helpers.
+		$next_date_order = ( 'asc' === $order ) ? 'desc' : 'asc';
+		$date_sort_url   = add_query_arg( array( 'orderby' => 'date', 'order' => $next_date_order ), $page_url . $filter_qs );
+		$date_col_class  = 'column-date sorted ' . $order;
+		?>
+		<div class="wrap">
+			<h1 class="wp-heading-inline"><?php esc_html_e( 'All Items', 'game-calendar' ); ?></h1>
+			<hr class="wp-header-end" />
+
+			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" style="margin-bottom:0;">
+				<input type="hidden" name="page" value="gc-entries" />
+				<?php if ( $type_filter ) : ?><input type="hidden" name="type" value="<?php echo esc_attr( $type_filter ); ?>" /><?php endif; ?>
+				<?php if ( $orderby ) : ?><input type="hidden" name="orderby" value="<?php echo esc_attr( $orderby ); ?>" /><?php endif; ?>
+				<?php if ( $order ) : ?><input type="hidden" name="order" value="<?php echo esc_attr( $order ); ?>" /><?php endif; ?>
+				<p class="search-box">
+					<label for="gc-search-input" class="screen-reader-text"><?php esc_html_e( 'Search items', 'game-calendar' ); ?></label>
+					<input type="search" id="gc-search-input" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'Search by title…', 'game-calendar' ); ?>" />
+					<button type="submit" class="button"><?php esc_html_e( 'Search', 'game-calendar' ); ?></button>
+				</p>
+			</form>
+
+			<ul class="subsubsub">
+				<li>
+					<a href="<?php echo esc_url( $page_url . ( $search ? '&s=' . urlencode( $search ) : '' ) . '&orderby=' . $orderby . '&order=' . $order ); ?>" <?php echo '' === $type_filter ? 'class="current" aria-current="page"' : ''; ?>>
+						<?php esc_html_e( 'All', 'game-calendar' ); ?> <span class="count">(<?php echo absint( $total ); ?>)</span>
+					</a> |
+				</li>
+				<?php $last = end( $valid_types ); foreach ( $valid_types as $t ) : ?>
+					<li>
+						<a href="<?php echo esc_url( $page_url . '&type=' . $t . ( $search ? '&s=' . urlencode( $search ) : '' ) . '&orderby=' . $orderby . '&order=' . $order ); ?>" <?php echo $type_filter === $t ? 'class="current" aria-current="page"' : ''; ?>>
+							<?php echo esc_html( $type_labels[ $t ] ); ?> <span class="count">(<?php echo absint( $counts[ $t ] ); ?>)</span>
+						</a><?php echo $t !== $last ? ' |' : ''; ?>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+
+			<table class="wp-list-table widefat fixed striped gc-entries-table">
+				<thead>
+					<tr>
+						<th scope="col" class="manage-column column-type"><?php esc_html_e( 'Type', 'game-calendar' ); ?></th>
+						<th scope="col" class="manage-column column-title column-primary"><?php esc_html_e( 'Title', 'game-calendar' ); ?></th>
+						<th scope="col" class="manage-column <?php echo esc_attr( $date_col_class ); ?>">
+							<a href="<?php echo esc_url( $date_sort_url ); ?>">
+								<span><?php esc_html_e( 'Date', 'game-calendar' ); ?></span>
+								<span class="sorting-indicators">
+									<span class="sorting-indicator asc" aria-hidden="true"></span>
+									<span class="sorting-indicator desc" aria-hidden="true"></span>
+								</span>
+							</a>
+						</th>
+						<th scope="col" class="manage-column column-status"><?php esc_html_e( 'Status', 'game-calendar' ); ?></th>
+					</tr>
+				</thead>
+				<tbody id="the-list">
+					<?php if ( empty( $posts ) ) : ?>
+						<tr>
+							<td colspan="4"><?php esc_html_e( 'No items found.', 'game-calendar' ); ?></td>
+						</tr>
+					<?php else : ?>
+						<?php foreach ( $posts as $entry ) :
+							$ptype     = $entry->post_type;
+							$meta_key  = ( 'gc_event' === $ptype ) ? 'gc_event_start' : 'gc_release_date';
+							$date_val  = get_post_meta( $entry->ID, $meta_key, true );
+							$date_end  = ( 'gc_event' === $ptype ) ? get_post_meta( $entry->ID, 'gc_event_end', true ) : '';
+							$edit_link  = get_edit_post_link( $entry->ID );
+							$trash_link = get_delete_post_link( $entry->ID );
+							$badge_mod  = str_replace( 'gc_', '', $ptype );
+
+							// Parse date parts for the quick edit form.
+							$s_date = ''; $s_time = ''; $e_date = ''; $e_time = '';
+							if ( $date_val ) {
+								if ( false !== strpos( $date_val, 'T' ) ) {
+									list( $s_date, $s_time ) = explode( 'T', $date_val, 2 );
+								} else {
+									$s_date = $date_val;
+								}
+							}
+							if ( $date_end ) {
+								if ( false !== strpos( $date_end, 'T' ) ) {
+									list( $e_date, $e_time ) = explode( 'T', $date_end, 2 );
+								} else {
+									$e_date = $date_end;
+								}
+							}
+
+							$entry_json = array(
+								'id'     => $entry->ID,
+								'type'   => $ptype,
+								'title'  => $entry->post_title,
+								'date'   => $date_val,
+								'status' => $entry->post_status,
+							);
+							if ( 'gc_event' === $ptype ) {
+								$entry_json['startDate'] = $s_date;
+								$entry_json['startTime'] = $s_time;
+								$entry_json['endDate']   = $e_date;
+								$entry_json['endTime']   = $e_time;
+							}
+						?>
+							<tr id="post-<?php echo absint( $entry->ID ); ?>" data-entry="<?php echo esc_attr( wp_json_encode( $entry_json ) ); ?>">
+								<td class="column-type">
+									<span class="gc-entry-badge gc-entry-badge--<?php echo esc_attr( $badge_mod ); ?>">
+										<?php echo esc_html( $type_labels[ $ptype ] ?? $ptype ); ?>
+									</span>
+								</td>
+								<td class="column-title column-primary">
+									<strong>
+										<a href="<?php echo esc_url( $edit_link ); ?>"><?php echo esc_html( $entry->post_title ?: __( '(no title)', 'game-calendar' ) ); ?></a>
+									</strong>
+									<div class="row-actions">
+										<span class="edit"><a href="<?php echo esc_url( $edit_link ); ?>"><?php esc_html_e( 'Edit', 'game-calendar' ); ?></a></span>
+										<span> | </span><span class="inline hide-if-no-js"><a href="#" class="gc-qe-trigger"><?php esc_html_e( 'Quick Edit', 'game-calendar' ); ?></a></span>
+										<?php if ( $trash_link ) : ?>
+											<span> | </span><span class="trash"><a href="<?php echo esc_url( $trash_link ); ?>" class="submitdelete"><?php esc_html_e( 'Trash', 'game-calendar' ); ?></a></span>
+										<?php endif; ?>
+									</div>
+								</td>
+								<td class="column-date"><?php echo esc_html( $date_val ?: '—' ); ?></td>
+								<td class="column-status">
+									<?php if ( 'publish' === $entry->post_status ) : ?>
+										<span class="gc-status-dot gc-status-dot--published"></span><?php esc_html_e( 'Published', 'game-calendar' ); ?>
+									<?php else : ?>
+										<span class="gc-status-dot gc-status-dot--draft"></span><?php esc_html_e( 'Draft', 'game-calendar' ); ?>
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					<?php endif; ?>
+				</tbody>
+			</table>
+		</div>
+		<?php
 	}
 }

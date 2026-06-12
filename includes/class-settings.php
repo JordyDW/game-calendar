@@ -35,6 +35,11 @@ class GC_Settings {
 			? sanitize_text_field( $input['gc_igdb_client_id'] )
 			: ( $existing['gc_igdb_client_id'] ?? '' );
 
+		$valid_modes = array( 'future_releases', 'all_releases' );
+		$output['gc_igdb_search_mode'] = ( isset( $input['gc_igdb_search_mode'] ) && in_array( $input['gc_igdb_search_mode'], $valid_modes, true ) )
+			? $input['gc_igdb_search_mode']
+			: ( $existing['gc_igdb_search_mode'] ?? 'future_releases' );
+
 		// Only update secret if a new non-empty value is provided.
 		$output['gc_igdb_client_secret'] = ( isset( $input['gc_igdb_client_secret'] ) && '' !== $input['gc_igdb_client_secret'] )
 			? sanitize_text_field( $input['gc_igdb_client_secret'] )
@@ -75,6 +80,7 @@ class GC_Settings {
 		$github_stored  = $options['gc_github_token']       ?? '';
 		$color_release  = $options['gc_color_release']      ?? '#ac00fb';
 		$color_event    = $options['gc_color_event']        ?? '#96eefe';
+		$search_mode    = $options['gc_igdb_search_mode']   ?? 'future_releases';
 		?>
 		<div class="gc-admin-page">
 
@@ -125,6 +131,28 @@ class GC_Settings {
 									class="gc-settings-input"
 									autocomplete="new-password" />
 								<p class="gc-settings-hint"><?php esc_html_e( 'Leave blank to keep the saved secret.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+						<div class="gc-settings-row">
+							<label class="gc-settings-label">
+								<?php esc_html_e( 'Search Mode', 'game-calendar' ); ?>
+							</label>
+							<div class="gc-settings-control">
+								<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+									<input type="radio"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_search_mode]"
+										value="future_releases"
+										<?php checked( $search_mode, 'future_releases' ); ?> />
+									<?php esc_html_e( 'Future releases (default)', 'game-calendar' ); ?>
+								</label>
+								<label style="display:flex;align-items:center;gap:6px;">
+									<input type="radio"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_search_mode]"
+										value="all_releases"
+										<?php checked( $search_mode, 'all_releases' ); ?> />
+									<?php esc_html_e( 'All releases', 'game-calendar' ); ?>
+								</label>
+								<p class="gc-settings-hint"><?php esc_html_e( 'Filter IGDB search results to upcoming games only, or include all releases.', 'game-calendar' ); ?></p>
 							</div>
 						</div>
 						<div class="gc-settings-row gc-test-row">
