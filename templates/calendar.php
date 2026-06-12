@@ -15,6 +15,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<span class="gc-dot gc-dot--event"></span>
 			<?php esc_html_e( 'Gaming Events', 'game-calendar' ); ?>
 		</label>
+		<button type="button" id="gc-share-btn" class="gc-share-btn" aria-label="<?php esc_attr_e( 'Copy calendar link', 'game-calendar' ); ?>">
+			<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+				<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+			</svg>
+			<span><?php esc_html_e( 'Share', 'game-calendar' ); ?></span>
+		</button>
 	</div>
 
 	<div id="gc-calendar"></div>

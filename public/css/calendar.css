@@ -93,6 +93,36 @@
 	color: var(--gc-text);
 }
 
+/* ── Share button ────────────────────────────────────────────────────────── */
+
+.gc-share-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-left: auto;
+	padding: 6px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--gc-text-muted);
+	background: var(--gc-bg-subtle);
+	border: 1px solid var(--gc-border);
+	border-radius: 20px;
+	cursor: pointer;
+	transition: border-color .15s, color .15s, background .15s;
+	white-space: nowrap;
+}
+
+.gc-share-btn:hover {
+	border-color: var(--gc-accent);
+	color: var(--gc-text);
+}
+
+.gc-share-btn--copied {
+	background: var(--gc-accent-light);
+	border-color: var(--gc-accent);
+	color: var(--gc-text);
+}
+
 /* ── Calendar container ──────────────────────────────────────────────────── */
 
 #gc-calendar {
@@ -215,7 +245,7 @@
 
 /* Force background from FullCalendar's color prop — prevents theme overrides. */
 #gc-calendar .fc-daygrid-event {
-	background-color: var(--fc-event-bg-color, #ac00fb) !important;
+	background-color: transparent !important;
 	border: none !important;
 	border-radius: 6px;
 	cursor: pointer;
@@ -250,7 +280,7 @@
 
 .gc-event-card--cover {
 	height: 72px;
-	border-bottom: 3px solid var(--fc-event-bg-color, #ac00fb);
+	border-bottom: 3px solid transparent;
 }
 
 .gc-event-cover {

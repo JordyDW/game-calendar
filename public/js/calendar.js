@@ -189,10 +189,14 @@
 				var props    = arg.event.extendedProps || {};
 				var hasCover = !! props.cover;
 
+				var color = arg.event.backgroundColor;
+
 				var wrap = document.createElement( 'div' );
 				wrap.className = hasCover ? 'gc-event-card gc-event-card--cover' : 'gc-event-card';
 
 				if ( hasCover ) {
+					wrap.style.borderBottomColor = color;
+
 					var img = document.createElement( 'img' );
 					img.src       = props.cover;
 					img.alt       = '';
@@ -202,6 +206,8 @@
 					var overlay = document.createElement( 'div' );
 					overlay.className = 'gc-event-overlay';
 					wrap.appendChild( overlay );
+				} else {
+					wrap.style.backgroundColor = color;
 				}
 
 				var label = document.createElement( 'span' );
@@ -270,6 +276,23 @@
 				syncUrl( calendar );
 			} );
 		} );
+
+		// Share button — copy current URL to clipboard.
+		var shareBtn  = document.getElementById( 'gc-share-btn' );
+		var shareSpan = shareBtn ? shareBtn.querySelector( 'span' ) : null;
+		if ( shareBtn && shareSpan ) {
+			shareBtn.addEventListener( 'click', function () {
+				var url = window.location.href;
+				navigator.clipboard.writeText( url ).then( function () {
+					shareSpan.textContent = 'Copied!';
+					shareBtn.classList.add( 'gc-share-btn--copied' );
+					setTimeout( function () {
+						shareSpan.textContent = 'Share';
+						shareBtn.classList.remove( 'gc-share-btn--copied' );
+					}, 2000 );
+				} );
+			} );
+		}
 
 		function positionTooltip( x, y ) {
 			var offset = 16;
