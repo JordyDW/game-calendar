@@ -294,6 +294,12 @@
 	font-weight: 600;
 }
 
+.gc-type-tabs.gc-tabs--locked .gc-tab:not(.gc-tab--active) {
+	opacity: 0.4;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
 /* ── Modal body ──────────────────────────────────────────────────────────── */
 
 .gc-modal-body {

@@ -71,6 +71,7 @@
 
 		modal.querySelectorAll( '.gc-tab' ).forEach( function ( tab ) {
 			tab.addEventListener( 'click', function () {
+				if ( editingPostId ) return;
 				modal.querySelectorAll( '.gc-tab' ).forEach( function ( t ) { t.classList.remove( 'gc-tab--active' ); } );
 				tab.classList.add( 'gc-tab--active' );
 				activeType = tab.dataset.type;
@@ -130,7 +131,7 @@
 
 		[ 'gc-modal-igdb', 'gc-modal-title', 'gc-modal-date',
 		  'gc-modal-start-date', 'gc-modal-start-time', 'gc-modal-end-date', 'gc-modal-end-time',
-		  'gc-modal-event-url', 'gc-modal-developer', 'gc-modal-publisher', 'gc-modal-genre',
+		  'gc-modal-event-url', 'gc-modal-event-address', 'gc-modal-developer', 'gc-modal-publisher', 'gc-modal-genre',
 		  'gc-modal-platforms', 'gc-modal-url', 'gc-modal-igdb-id',
 		  'gc-modal-cover-url', 'gc-modal-event-cover-url' ].forEach( function ( id ) {
 			var el = document.getElementById( id );
@@ -154,6 +155,8 @@
 		saveBtn.disabled    = false;
 
 		editingPostId = null;
+		var tabsEl = modal.querySelector( '.gc-type-tabs' );
+		if ( tabsEl ) tabsEl.classList.remove( 'gc-tabs--locked' );
 		document.getElementById( 'gc-modal-heading' ).textContent = 'Add Entry';
 	}
 
@@ -219,6 +222,7 @@
 				data.gc_event_end = endTimeVal ? endDateVal + 'T' + endTimeVal : endDateVal;
 			}
 			data.gc_event_url       = document.getElementById( 'gc-modal-event-url' ).value;
+			data.gc_event_address   = document.getElementById( 'gc-modal-event-address' ).value;
 			data.gc_event_cover_url = document.getElementById( 'gc-modal-event-cover-url' ).value;
 		}
 
@@ -456,6 +460,7 @@
 					setVal( 'gc-modal-end-date', endRaw );
 				}
 				setVal( 'gc-modal-event-url',       d.gc_event_url );
+			setVal( 'gc-modal-event-address',   d.gc_event_address );
 				setVal( 'gc-modal-event-cover-url', d.gc_event_cover_url );
 				if ( d.gc_event_cover_url ) {
 					var evtImg = document.getElementById( 'gc-modal-event-cover-img' );
@@ -465,6 +470,8 @@
 
 			editingPostId = parseInt( d.post_id, 10 );
 			document.getElementById( 'gc-modal-heading' ).textContent = 'Edit Entry';
+			var tabsEl = modal.querySelector( '.gc-type-tabs' );
+			if ( tabsEl ) tabsEl.classList.add( 'gc-tabs--locked' );
 			document.getElementById( 'gc-modal-save' ).textContent    = 'Save Changes';
 
 			modal.hidden = false;
@@ -498,6 +505,9 @@
 
 		if ( event.startStr ) {
 			html += '<span class="gc-pop-date">' + formatDate( event.startStr ) + '</span>';
+		}
+		if ( props.address ) {
+			html += '<span class="gc-pop-meta">📍 ' + esc( props.address ) + '</span>';
 		}
 		if ( props.developer ) {
 			html += '<span class="gc-pop-meta">' + esc( props.developer ) + '</span>';

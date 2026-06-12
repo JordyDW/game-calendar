@@ -147,6 +147,10 @@ class GC_Meta_Boxes {
 				<td><input type="url" id="gc_event_url" name="gc_event_url" value="<?php echo esc_attr( $event_url ); ?>" style="width:100%;" placeholder="https://…" /></td>
 			</tr>
 			<tr>
+				<th><label for="gc_event_address"><?php esc_html_e( 'Address', 'game-calendar' ); ?></label></th>
+				<td><input type="text" id="gc_event_address" name="gc_event_address" value="<?php echo esc_attr( get_post_meta( $post->ID, 'gc_event_address', true ) ); ?>" style="width:100%;" placeholder="<?php esc_attr_e( 'Venue name or street address', 'game-calendar' ); ?>" /></td>
+			</tr>
+			<tr>
 				<th><label for="gc_event_cover_url"><?php esc_html_e( 'Cover Image', 'game-calendar' ); ?></label></th>
 				<td>
 					<div style="display:flex;gap:8px;align-items:center;">
@@ -253,6 +257,9 @@ class GC_Meta_Boxes {
 			}
 			if ( isset( $_POST['gc_event_url'] ) ) {
 				update_post_meta( $post_id, 'gc_event_url', sanitize_text_field( wp_unslash( $_POST['gc_event_url'] ) ) );
+			}
+			if ( isset( $_POST['gc_event_address'] ) ) {
+				update_post_meta( $post_id, 'gc_event_address', sanitize_text_field( wp_unslash( $_POST['gc_event_address'] ) ) );
 			}
 			if ( isset( $_POST['gc_event_cover_url'] ) ) {
 				update_post_meta( $post_id, 'gc_event_cover_url', esc_url_raw( wp_unslash( $_POST['gc_event_cover_url'] ) ) );

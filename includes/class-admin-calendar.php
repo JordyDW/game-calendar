@@ -161,6 +161,10 @@ class GC_Admin_Calendar {
 							<label class="gc-label" for="gc-modal-event-url"><?php esc_html_e( 'Event URL', 'game-calendar' ); ?></label>
 							<input type="url" id="gc-modal-event-url" class="gc-input" placeholder="https://…" />
 						</div>
+						<div class="gc-field gc-field--event">
+							<label class="gc-label" for="gc-modal-event-address"><?php esc_html_e( 'Address', 'game-calendar' ); ?></label>
+							<input type="text" id="gc-modal-event-address" class="gc-input" placeholder="<?php esc_attr_e( 'Venue name or street address', 'game-calendar' ); ?>" />
+						</div>
 
 						<div class="gc-field gc-field--release">
 							<label class="gc-label" for="gc-modal-developer"><?php esc_html_e( 'Developer', 'game-calendar' ); ?></label>
@@ -263,7 +267,7 @@ class GC_Admin_Calendar {
 			}
 		}
 
-		$text_fields = array( 'gc_release_date', 'gc_event_start', 'gc_event_end', 'gc_event_url', 'gc_developer', 'gc_publisher', 'gc_genre' );
+		$text_fields = array( 'gc_release_date', 'gc_event_start', 'gc_event_end', 'gc_event_url', 'gc_event_address', 'gc_developer', 'gc_publisher', 'gc_genre' );
 		foreach ( $text_fields as $field ) {
 			if ( isset( $_POST[ $field ] ) && '' !== $_POST[ $field ] ) {
 				update_post_meta( $post_id, $field, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
@@ -350,6 +354,7 @@ class GC_Admin_Calendar {
 			$data['gc_event_start']     = get_post_meta( $post_id, 'gc_event_start', true );
 			$data['gc_event_end']       = get_post_meta( $post_id, 'gc_event_end', true );
 			$data['gc_event_url']       = get_post_meta( $post_id, 'gc_event_url', true );
+			$data['gc_event_address']   = get_post_meta( $post_id, 'gc_event_address', true );
 			$data['gc_event_cover_url'] = get_post_meta( $post_id, 'gc_event_cover_url', true );
 		}
 

@@ -126,6 +126,8 @@ class GC_Calendar_Query {
 					}
 				}
 
+				$address = ( 'gc_event' === $post_type ) ? get_post_meta( $post->ID, 'gc_event_address', true ) : '';
+
 				$event = array(
 					'id'            => $post->ID,
 					'title'         => $post->post_title,
@@ -133,8 +135,9 @@ class GC_Calendar_Query {
 					'color'         => $color_map[ $post_type ],
 					'url'           => $url,
 					'extendedProps' => array(
-						'type'  => $post_type,
-						'cover' => $cover,
+						'type'    => $post_type,
+						'cover'   => $cover,
+						'address' => $address,
 					),
 				);
 

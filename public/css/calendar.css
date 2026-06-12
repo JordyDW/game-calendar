@@ -250,6 +250,7 @@
 
 .gc-event-card--cover {
 	height: 72px;
+	border-bottom: 3px solid var(--fc-event-bg-color, #ac00fb);
 }
 
 .gc-event-cover {

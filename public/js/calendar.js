@@ -9,6 +9,65 @@
 		var tooltip     = document.getElementById( 'gc-event-tooltip' );
 		var modal       = document.getElementById( 'gc-detail-modal' );
 
+		// ── URL state ───────────────────────────────────────────────────────────
+		var validViews = [ 'dayGridMonth', 'timeGridWeek', 'timeGridDay', 'listMonth' ];
+
+		function readParams() {
+			var params = new URLSearchParams( window.location.search );
+			var out = {};
+
+			var v = params.get( 'gc_view' );
+			out.view = ( v && validViews.indexOf( v ) !== -1 ) ? v : 'dayGridMonth';
+
+			var d = params.get( 'gc_date' );
+			out.date = ( d && /^\d{4}-\d{2}-\d{2}$/.test( d ) ) ? d : null;
+
+			var t = params.get( 'gc_types' );
+			if ( t ) {
+				var allowed = [ 'gc_release', 'gc_event' ];
+				Object.keys( activeTypes ).forEach( function ( k ) { activeTypes[ k ] = false; } );
+				t.split( ',' ).forEach( function ( type ) {
+					if ( allowed.indexOf( type ) !== -1 ) activeTypes[ type ] = true;
+				} );
+			}
+
+			return out;
+		}
+
+		function syncUrl( calendar ) {
+			var params   = new URLSearchParams( window.location.search );
+			var viewType = calendar.view.type;
+			var d        = calendar.view.currentStart;
+			var dateStr  = d.getFullYear() + '-' +
+				String( d.getMonth() + 1 ).padStart( 2, '0' ) + '-' +
+				String( d.getDate() ).padStart( 2, '0' );
+
+			params.set( 'gc_view', viewType );
+			params.set( 'gc_date', dateStr );
+
+			var activeList = Object.keys( activeTypes ).filter( function ( k ) { return activeTypes[ k ]; } );
+			if ( activeList.length === Object.keys( activeTypes ).length ) {
+				params.delete( 'gc_types' );
+			} else {
+				params.set( 'gc_types', activeList.join( ',' ) );
+			}
+
+			var search = params.toString();
+			history.replaceState(
+				null,
+				'',
+				window.location.pathname + ( search ? '?' + search : '' ) + window.location.hash
+			);
+		}
+
+		// ── Read initial state from URL ─────────────────────────────────────────
+		var urlState = readParams();
+
+		// Sync checkbox state to match URL-derived activeTypes.
+		document.querySelectorAll( '.gc-filter-type' ).forEach( function ( checkbox ) {
+			checkbox.checked = !! activeTypes[ checkbox.value ];
+		} );
+
 		// ── Detail modal helpers ─────────────────────────────────────────────
 		function openDetailModal( event ) {
 			if ( ! modal ) return;
@@ -44,6 +103,9 @@
 			}
 			if ( props.genre ) {
 				metaHtml += '<div class="gc-detail-row"><span class="gc-detail-label">Genre</span><span class="gc-detail-value">' + escHtml( props.genre ) + '</span></div>';
+			}
+			if ( props.address ) {
+				metaHtml += '<div class="gc-detail-row"><span class="gc-detail-label">Address</span><span class="gc-detail-value">' + escHtml( props.address ) + '</span></div>';
 			}
 			if ( props.platforms && props.platforms.length ) {
 				metaHtml += '<div class="gc-detail-row"><span class="gc-detail-label">Platforms</span><span class="gc-detail-value">' + escHtml( props.platforms.join( ', ' ) ) + '</span></div>';
@@ -85,8 +147,8 @@
 			positionTooltip( e.clientX, e.clientY );
 		} );
 
-		var calendar = new FullCalendar.Calendar( el, {
-			initialView:         'dayGridMonth',
+		var calOptions = {
+			initialView:         urlState.view,
 			height:              'auto',
 			showNonCurrentDates: false,
 			nowIndicator:        true,
@@ -119,6 +181,9 @@
 					console.warn( 'Game Calendar: failed to load events.' );
 				},
 			} ],
+			datesSet: function () {
+				syncUrl( calendar );
+			},
 			// Render event as a cover-art card when an image is available.
 			eventContent: function ( arg ) {
 				var props    = arg.event.extendedProps || {};
@@ -172,6 +237,9 @@
 				if ( props.platforms && props.platforms.length ) {
 					html += '<span class="gc-tip-row gc-tip-platforms">' + escHtml( props.platforms.join( ' · ' ) ) + '</span>';
 				}
+				if ( props.address ) {
+					html += '<span class="gc-tip-row gc-tip-address">📍 ' + escHtml( props.address ) + '</span>';
+				}
 				if ( info.event.url ) {
 					html += '<span class="gc-tip-link">Click to open ↗</span>';
 				}
@@ -185,8 +253,13 @@
 			eventMouseLeave: function () {
 				if ( tooltip ) tooltip.hidden = true;
 			},
-		} );
+		};
 
+		if ( urlState.date ) {
+			calOptions.initialDate = urlState.date;
+		}
+
+		var calendar = new FullCalendar.Calendar( el, calOptions );
 		calendar.render();
 
 		// Type filter checkboxes.
@@ -194,6 +267,7 @@
 			checkbox.addEventListener( 'change', function () {
 				activeTypes[ this.value ] = this.checked;
 				calendar.refetchEvents();
+				syncUrl( calendar );
 			} );
 		} );
 
