@@ -3,7 +3,7 @@
  * Plugin Name: Game Calendar
  * Plugin URI:  https://github.com/JordyDW/game-calendar
  * Description: A gaming-focused calendar for tracking game releases, DLC, and gaming events with IGDB integration.
- * Version:     1.0.5
+ * Version:     1.1.0
  * Author:      Jordy De Wilde
  * Text Domain: game-calendar
  * Domain Path: /languages
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GC_VERSION', '1.0.5' );
+define( 'GC_VERSION', '1.1.0' );
 define( 'GC_GITHUB_REPO',  'https://github.com/JordyDW/game-calendar' );
 define( 'GC_PLUGIN_FILE', __FILE__ );
 define( 'GC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -53,11 +53,16 @@ add_action( 'plugins_loaded', function () {
 	new GC_IGDB_API();
 	new GC_Calendar_Query();
 	new GC_Admin_Calendar();
+	new GC_Discord_Notifier();
 } );
 
 register_activation_hook( __FILE__, function () {
 	( new GC_Post_Types() )->register();
+	GC_Discord_Notifier::schedule_events();
 	flush_rewrite_rules();
 } );
 
-register_deactivation_hook( __FILE__, 'flush_rewrite_rules' );
+register_deactivation_hook( __FILE__, function () {
+	GC_Discord_Notifier::clear_events();
+	flush_rewrite_rules();
+} );

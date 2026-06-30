@@ -12,6 +12,7 @@ class GC_Settings {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_gc_test_igdb_connection', array( $this, 'ajax_test_connection' ) );
+		add_action( 'wp_ajax_gc_test_discord', array( $this, 'ajax_test_discord' ) );
 	}
 
 	public function enqueue_assets( $hook ) {
@@ -50,6 +51,39 @@ class GC_Settings {
 			? sanitize_text_field( $input['gc_github_token'] )
 			: ( $existing['gc_github_token'] ?? '' );
 
+		// --- Discord notifications ---------------------------------------
+
+		// Webhook URL is secret-ish: only overwrite when a new value is provided.
+		$output['gc_discord_webhook_url'] = ( isset( $input['gc_discord_webhook_url'] ) && '' !== trim( $input['gc_discord_webhook_url'] ) )
+			? esc_url_raw( trim( $input['gc_discord_webhook_url'] ) )
+			: ( $existing['gc_discord_webhook_url'] ?? '' );
+
+		foreach ( array( 'gc_discord_enable_instant', 'gc_discord_enable_daily', 'gc_discord_enable_weekly', 'gc_discord_enable_countdown' ) as $flag ) {
+			$output[ $flag ] = empty( $input[ $flag ] ) ? 0 : 1;
+		}
+
+		$valid_types = array( 'gc_release', 'gc_event', 'gc_dlc' );
+		$output['gc_discord_types'] = ( isset( $input['gc_discord_types'] ) && is_array( $input['gc_discord_types'] ) )
+			? array_values( array_intersect( array_map( 'sanitize_key', $input['gc_discord_types'] ), $valid_types ) )
+			: array();
+
+		$output['gc_discord_mention'] = isset( $input['gc_discord_mention'] )
+			? $this->sanitize_mention( $input['gc_discord_mention'] )
+			: ( $existing['gc_discord_mention'] ?? '' );
+
+		$output['gc_discord_daily_time']  = $this->sanitize_time( $input['gc_discord_daily_time'] ?? '', $existing['gc_discord_daily_time'] ?? '09:00' );
+		$output['gc_discord_weekly_time'] = $this->sanitize_time( $input['gc_discord_weekly_time'] ?? '', $existing['gc_discord_weekly_time'] ?? '09:00' );
+
+		$output['gc_discord_weekly_day'] = ( isset( $input['gc_discord_weekly_day'] ) && '' !== $input['gc_discord_weekly_day'] )
+			? max( 0, min( 6, (int) $input['gc_discord_weekly_day'] ) )
+			: ( $existing['gc_discord_weekly_day'] ?? 1 );
+
+		$output['gc_discord_countdown_days'] = isset( $input['gc_discord_countdown_days'] )
+			? max( 1, absint( $input['gc_discord_countdown_days'] ) )
+			: ( $existing['gc_discord_countdown_days'] ?? 1 );
+
+		$output['gc_discord_footer']     = isset( $input['gc_discord_footer'] ) ? sanitize_text_field( $input['gc_discord_footer'] ) : ( $existing['gc_discord_footer'] ?? '' );
+
 		foreach ( array( 'gc_color_release', 'gc_color_event' ) as $color_key ) {
 			$output[ $color_key ] = isset( $input[ $color_key ] )
 				? sanitize_hex_color( $input[ $color_key ] )
@@ -81,6 +115,21 @@ class GC_Settings {
 		$color_release  = $options['gc_color_release']      ?? '#ac00fb';
 		$color_event    = $options['gc_color_event']        ?? '#96eefe';
 		$search_mode    = $options['gc_igdb_search_mode']   ?? 'future_releases';
+
+		$discord_stored   = $options['gc_discord_webhook_url']  ?? '';
+		$d_instant        = ! empty( $options['gc_discord_enable_instant'] );
+		$d_daily          = ! empty( $options['gc_discord_enable_daily'] );
+		$d_weekly         = ! empty( $options['gc_discord_enable_weekly'] );
+		$d_countdown      = ! empty( $options['gc_discord_enable_countdown'] );
+		$d_types          = ( isset( $options['gc_discord_types'] ) && is_array( $options['gc_discord_types'] ) )
+			? $options['gc_discord_types']
+			: array( 'gc_release', 'gc_event', 'gc_dlc' );
+		$d_mention        = $options['gc_discord_mention']         ?? '';
+		$d_daily_time     = $options['gc_discord_daily_time']      ?? '09:00';
+		$d_weekly_time    = $options['gc_discord_weekly_time']     ?? '09:00';
+		$d_weekly_day     = isset( $options['gc_discord_weekly_day'] ) ? (int) $options['gc_discord_weekly_day'] : 1;
+		$d_countdown_days = isset( $options['gc_discord_countdown_days'] ) ? (int) $options['gc_discord_countdown_days'] : 1;
+		$d_footer         = $options['gc_discord_footer']          ?? '';
 		?>
 		<div class="gc-admin-page">
 
@@ -201,6 +250,151 @@ class GC_Settings {
 				<div class="gc-settings-section">
 					<div class="gc-settings-section-head">
 						<h2 class="gc-settings-section-title">
+							<span class="dashicons dashicons-megaphone"></span>
+							<?php esc_html_e( 'Discord Notifications', 'game-calendar' ); ?>
+						</h2>
+						<p class="gc-settings-section-desc">
+							<?php echo wp_kses(
+								__( 'Push calendar updates to your Discord community. In Discord, open <strong>Channel Settings → Integrations → Webhooks → New Webhook</strong>, copy the webhook URL, and paste it below.', 'game-calendar' ),
+								array( 'strong' => array() )
+							); ?>
+						</p>
+					</div>
+					<div class="gc-settings-section-body">
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-discord-webhook">
+								<?php esc_html_e( 'Webhook URL', 'game-calendar' ); ?>
+							</label>
+							<div class="gc-settings-control">
+								<input type="password" id="gc-discord-webhook"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_webhook_url]"
+									value=""
+									placeholder="<?php echo esc_attr( $discord_stored ? str_repeat( '•', 20 ) : 'https://discord.com/api/webhooks/…' ); ?>"
+									class="gc-settings-input"
+									autocomplete="new-password" />
+								<p class="gc-settings-hint"><?php esc_html_e( 'Leave blank to keep the saved webhook.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label"><?php esc_html_e( 'Triggers', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_instant]" value="1" <?php checked( $d_instant ); ?> />
+									<?php esc_html_e( 'Instant — announce each entry the first time it is published', 'game-calendar' ); ?>
+								</label>
+								<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_daily]" value="1" <?php checked( $d_daily ); ?> />
+									<?php esc_html_e( 'Daily — each morning, post what releases that day', 'game-calendar' ); ?>
+								</label>
+								<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_countdown]" value="1" <?php checked( $d_countdown ); ?> />
+									<?php esc_html_e( 'Countdown — post a reminder a set number of days before release', 'game-calendar' ); ?>
+								</label>
+								<label style="display:flex;align-items:center;gap:6px;">
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_weekly]" value="1" <?php checked( $d_weekly ); ?> />
+									<?php esc_html_e( 'Weekly digest — once a week, recap the coming 7 days', 'game-calendar' ); ?>
+								</label>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label"><?php esc_html_e( 'Entry types', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<?php
+								$type_labels = array(
+									'gc_release' => __( 'Game releases', 'game-calendar' ),
+									'gc_event'   => __( 'Gaming events', 'game-calendar' ),
+									'gc_dlc'     => __( 'DLC & updates', 'game-calendar' ),
+								);
+								foreach ( $type_labels as $type_key => $type_label ) :
+									?>
+									<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_types][]" value="<?php echo esc_attr( $type_key ); ?>" <?php checked( in_array( $type_key, $d_types, true ) ); ?> />
+										<?php echo esc_html( $type_label ); ?>
+									</label>
+								<?php endforeach; ?>
+								<p class="gc-settings-hint"><?php esc_html_e( 'Only the selected types are pushed to Discord.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-discord-daily-time"><?php esc_html_e( 'Daily time', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<input type="time" id="gc-discord-daily-time" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_daily_time]" value="<?php echo esc_attr( $d_daily_time ); ?>" />
+								<p class="gc-settings-hint"><?php esc_html_e( 'When the daily and countdown posts go out (site timezone).', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-discord-countdown-days"><?php esc_html_e( 'Countdown days', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<input type="number" id="gc-discord-countdown-days" min="1" max="60" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_countdown_days]" value="<?php echo esc_attr( $d_countdown_days ); ?>" />
+								<p class="gc-settings-hint"><?php esc_html_e( 'Days before a release to post the countdown reminder. Can be overridden per entry.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-discord-weekly-day"><?php esc_html_e( 'Weekly digest', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control gc-color-control">
+								<select id="gc-discord-weekly-day" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_weekly_day]">
+									<?php
+									$wp_locale = $GLOBALS['wp_locale'];
+									for ( $i = 0; $i <= 6; $i++ ) {
+										printf(
+											'<option value="%d" %s>%s</option>',
+											(int) $i,
+											selected( $d_weekly_day, $i, false ),
+											esc_html( $wp_locale->get_weekday( $i ) )
+										);
+									}
+									?>
+								</select>
+								<input type="time" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_weekly_time]" value="<?php echo esc_attr( $d_weekly_time ); ?>" />
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-discord-mention"><?php esc_html_e( 'Mention', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<input type="text" id="gc-discord-mention"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_mention]"
+									value="<?php echo esc_attr( $d_mention ); ?>"
+									class="gc-settings-input"
+									placeholder="@everyone" />
+								<p class="gc-settings-hint">
+									<?php echo wp_kses(
+										__( 'Optional ping added to posts. Use <code>@everyone</code>, <code>@here</code>, or a role mention like <code>&lt;@&amp;123456789012345678&gt;</code> (copy the role ID in Discord). Leave blank for no ping.', 'game-calendar' ),
+										array( 'code' => array() )
+									); ?>
+								</p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-discord-footer"><?php esc_html_e( 'Footer text', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<input type="text" id="gc-discord-footer" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_footer]" value="<?php echo esc_attr( $d_footer ); ?>" class="gc-settings-input" placeholder="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?>" />
+								<p class="gc-settings-hint"><?php esc_html_e( 'Small line shown at the bottom of each embed. The message name and avatar are configured on the webhook in Discord.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row gc-test-row">
+							<span class="gc-settings-label"></span>
+							<div class="gc-settings-control">
+								<button type="button" id="gc-test-discord" class="button button-secondary">
+									<?php esc_html_e( 'Send Test Message', 'game-calendar' ); ?>
+								</button>
+								<span id="gc-test-discord-result" class="gc-test-result"></span>
+								<p class="gc-settings-hint"><?php esc_html_e( 'Sends a sample embed. Paste a new webhook above to test it before saving, or save first to test the stored one.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="gc-settings-section">
+					<div class="gc-settings-section-head">
+						<h2 class="gc-settings-section-title">
 							<span class="dashicons dashicons-art"></span>
 							<?php esc_html_e( 'Calendar Colors', 'game-calendar' ); ?>
 						</h2>
@@ -270,6 +464,36 @@ class GC_Settings {
 				} );
 			} );
 
+			// Send a test Discord message.
+			var discordBtn = document.getElementById( 'gc-test-discord' );
+			if ( discordBtn ) {
+				discordBtn.addEventListener( 'click', function () {
+					var btn     = this;
+					var result  = document.getElementById( 'gc-test-discord-result' );
+					var webhook = document.getElementById( 'gc-discord-webhook' );
+					btn.disabled       = true;
+					result.textContent = '<?php echo esc_js( __( 'Sending…', 'game-calendar' ) ); ?>';
+					result.className   = 'gc-test-result';
+					fetch( ajaxurl, {
+						method:  'POST',
+						headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+						body:    new URLSearchParams( {
+							action:  'gc_test_discord',
+							nonce:   '<?php echo esc_js( wp_create_nonce( 'gc_test_discord' ) ); ?>',
+							webhook: webhook ? webhook.value : ''
+						} )
+					} ).then( function ( r ) { return r.json(); } ).then( function ( data ) {
+						result.textContent = data.data.message;
+						result.classList.add( data.success ? 'gc-test-ok' : 'gc-test-fail' );
+						btn.disabled = false;
+					} ).catch( function () {
+						result.textContent = '<?php echo esc_js( __( 'Request failed.', 'game-calendar' ) ); ?>';
+						result.classList.add( 'gc-test-fail' );
+						btn.disabled = false;
+					} );
+				} );
+			}
+
 			// Live hex label on color pickers.
 			document.querySelectorAll( '.gc-color-swatch' ).forEach( function ( picker ) {
 				var label = picker.nextElementSibling;
@@ -297,6 +521,42 @@ class GC_Settings {
 		}
 
 		wp_send_json_success( array( 'message' => __( 'Connection successful! Token acquired.', 'game-calendar' ) ) );
+	}
+
+	public function ajax_test_discord() {
+		check_ajax_referer( 'gc_test_discord', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'game-calendar' ) ) );
+		}
+
+		// Allow testing a freshly typed (unsaved) webhook; otherwise fall back to the saved one.
+		$override = isset( $_POST['webhook'] ) ? esc_url_raw( wp_unslash( $_POST['webhook'] ) ) : '';
+		if ( $override
+			&& 0 !== strpos( $override, 'https://discord.com/api/webhooks/' )
+			&& 0 !== strpos( $override, 'https://discordapp.com/api/webhooks/' ) ) {
+			$override = '';
+		}
+
+		$notifier = new GC_Discord_Notifier();
+		$result   = $notifier->send_test( $override );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+		}
+
+		wp_send_json_success( array( 'message' => __( 'Test message sent! Check your Discord channel.', 'game-calendar' ) ) );
+	}
+
+	private function sanitize_mention( $value ) {
+		// Preserve Discord mention syntax (@everyone, @here, <@&ROLE_ID>, <@USER_ID>)
+		// which sanitize_text_field() would strip as if it were an HTML tag.
+		$value = preg_replace( '/[^a-zA-Z0-9 @&!<>#_-]/', '', (string) $value );
+		return trim( $value );
+	}
+
+	private function sanitize_time( $value, $fallback ) {
+		$value = trim( (string) $value );
+		return preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $value ) ? $value : $fallback;
 	}
 
 	public static function get( $key, $default = '' ) {
