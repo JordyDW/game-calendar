@@ -84,6 +84,8 @@ Go to **Game Calendar → Settings → Discord Notifications**:
 
 Each toggles independently. **Entry types** (game releases, gaming events, DLC) control what's eligible across all triggers.
 
+When the **Instant** trigger is on, the calendar quick-add modal shows an **Announce on Discord** checkbox (ticked by default). Untick it to add an entry silently — the instant alert is skipped, but the entry still appears in the scheduled daily, countdown and weekly digests. To suppress an entry across *every* trigger, use the per-entry **Don't announce this entry on Discord** option instead (see below).
+
 ### Mentions (pings)
 
 Leave **Mention** blank for no ping, or enter:

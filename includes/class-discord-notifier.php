@@ -152,6 +152,11 @@ class GC_Discord_Notifier {
 		if ( ! $this->is_eligible( $post_id, $post->post_type ) ) {
 			return;
 		}
+		// Per-entry opt-out chosen at add time ("Announce on Discord" unchecked).
+		// Only the instant alert is suppressed; scheduled digests still cover it.
+		if ( get_post_meta( $post_id, 'gc_discord_skip_instant', true ) ) {
+			return;
+		}
 		if ( get_post_meta( $post_id, 'gc_discord_sent_instant', true ) ) {
 			return;
 		}

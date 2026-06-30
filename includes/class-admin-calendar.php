@@ -86,6 +86,10 @@ class GC_Admin_Calendar {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			return;
 		}
+
+		// Only offer the "Announce on Discord" choice when instant alerts are
+		// actually wired up — otherwise there is nothing to suppress.
+		$discord_announce = GC_Settings::get( 'gc_discord_enable_instant' ) && GC_Settings::get( 'gc_discord_webhook_url' );
 		?>
 		<div class="gc-admin-page">
 			<div class="gc-toolbar">
@@ -206,6 +210,19 @@ class GC_Admin_Calendar {
 						</div>
 
 						<input type="hidden" id="gc-modal-igdb-id" />
+
+						<?php if ( $discord_announce ) : ?>
+						<div id="gc-modal-announce-row" class="gc-field gc-field--all gc-field--announce">
+							<label class="gc-announce-label">
+								<input type="checkbox" id="gc-modal-announce" checked />
+								<span class="dashicons dashicons-megaphone"></span>
+								<?php esc_html_e( 'Announce on Discord', 'game-calendar' ); ?>
+							</label>
+							<p class="gc-announce-hint">
+								<?php esc_html_e( 'Posts an instant alert to your Discord channel when saved. Uncheck to add this entry silently.', 'game-calendar' ); ?>
+							</p>
+						</div>
+						<?php endif; ?>
 					</div>
 
 					<div class="gc-modal-foot">
@@ -264,6 +281,13 @@ class GC_Admin_Calendar {
 			), true );
 			if ( is_wp_error( $post_id ) ) {
 				wp_send_json_error( array( 'message' => $post_id->get_error_message() ) );
+			}
+
+			// "Announce on Discord" unchecked → suppress the instant alert for this
+			// new entry. Scheduled digests still pick it up. Defaults to announcing.
+			$announce = isset( $_POST['gc_discord_announce'] ) ? sanitize_text_field( wp_unslash( $_POST['gc_discord_announce'] ) ) : '1';
+			if ( '1' !== $announce ) {
+				update_post_meta( $post_id, 'gc_discord_skip_instant', 1 );
 			}
 		}
 
