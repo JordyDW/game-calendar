@@ -154,6 +154,12 @@
 		saveBtn.textContent = 'Save';
 		saveBtn.disabled    = false;
 
+		// Default the "Announce on Discord" control to on and visible (add mode).
+		var announce = document.getElementById( 'gc-modal-announce' );
+		if ( announce ) announce.checked = true;
+		var announceRow = document.getElementById( 'gc-modal-announce-row' );
+		if ( announceRow ) announceRow.style.display = '';
+
 		editingPostId = null;
 		var tabsEl = modal.querySelector( '.gc-type-tabs' );
 		if ( tabsEl ) tabsEl.classList.remove( 'gc-tabs--locked' );
@@ -193,6 +199,10 @@
 
 		if ( editingPostId ) {
 			data.post_id = editingPostId;
+		} else {
+			// Instant-alert opt-out applies only to brand-new entries.
+			var announce = document.getElementById( 'gc-modal-announce' );
+			data.gc_discord_announce = ( announce && ! announce.checked ) ? '0' : '1';
 		}
 
 		if ( 'gc_release' === activeType ) {
@@ -477,6 +487,11 @@
 			modal.hidden = false;
 			document.body.classList.add( 'gc-modal-open' );
 			updateTypeRows();
+
+			// The instant alert only fires on first publish, so hide the
+			// "Announce on Discord" control when editing an existing entry.
+			var announceRow = document.getElementById( 'gc-modal-announce-row' );
+			if ( announceRow ) announceRow.style.display = 'none';
 
 			setTimeout( function () {
 				var focus = document.getElementById( 'gc-modal-title' );
