@@ -18,6 +18,7 @@ Built for [Gamekast](https://gamekast.be).
 - **Hover tooltips** — rich tooltip on hover showing cover, date, developer, platforms
 - **Click-to-detail modal** — click any event to see full details; visit page button if a URL is set
 - **Type filters** — toggle game releases and gaming events independently
+- **Discord notifications** — push releases, events and DLC to a Discord channel via webhook, with instant, daily, countdown and weekly-digest triggers, rich embeds, optional `@everyone`/role pings, and per-entry overrides
 - **Auto-updates** — updates delivered via GitHub Releases, installable from the WP admin
 
 ---
@@ -27,6 +28,7 @@ Built for [Gamekast](https://gamekast.be).
 - WordPress 6.0+
 - PHP 8.0+
 - [IGDB API credentials](https://dev.twitch.tv/docs/api/) (free — requires a Twitch account)
+- *(optional)* A Discord channel webhook, for community notifications
 
 ---
 
@@ -50,6 +52,64 @@ IGDB uses Twitch OAuth2. To get credentials:
 5. Category: **Application Integration**
 6. Copy the **Client ID** and generate a **Client Secret**
 7. Paste both into Game Calendar → Settings → Test Connection to verify
+
+---
+
+## Discord Notifications
+
+Push calendar updates to a Discord community channel via an [incoming webhook](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks). No bot or OAuth required.
+
+### 1. Create a webhook in Discord
+
+1. Open the target channel → **Edit Channel** (gear icon) → **Integrations** → **Webhooks** → **New Webhook**
+2. Give it a name and avatar — these appear on every message; the plugin doesn't override them
+3. Click **Copy Webhook URL**
+
+### 2. Connect it in WordPress
+
+Go to **Game Calendar → Settings → Discord Notifications**:
+
+1. Paste the **Webhook URL**
+2. Click **Send Test Message** — a sample embed should land in your channel within a second (you can test before saving)
+3. Pick your **triggers**, **entry types**, **mention** and **schedule**, then **Save Settings**
+
+### Triggers
+
+| Trigger | When it fires |
+| --- | --- |
+| **Instant** | The first time a release/event/DLC is published |
+| **Daily** | Each morning, lists everything releasing that day |
+| **Countdown** | A reminder a set number of days before a release |
+| **Weekly digest** | Once a week, recaps the coming 7 days |
+
+Each toggles independently. **Entry types** (game releases, gaming events, DLC) control what's eligible across all triggers.
+
+### Mentions (pings)
+
+Leave **Mention** blank for no ping, or enter:
+
+- `@everyone` or `@here`
+- a role mention `<@&ROLE_ID>` — turn on **User Settings → Advanced → Developer Mode** in Discord, then **Server Settings → Roles → ⋯ → Copy Role ID**
+
+The plugin sends the matching `allowed_mentions`, so the ping actually notifies members (Discord suppresses pings otherwise).
+
+### Schedule & timezone
+
+Daily, countdown and weekly times use your site's timezone (**Settings → General**). Changing them re-arms the schedule automatically when you save.
+
+> **Note:** Scheduled triggers run on WP-Cron, which fires on site traffic — so on a quiet site the 09:00 digest goes out on the first visit after 09:00. For exact timing, [disable WP-Cron](https://developer.wordpress.org/plugins/cron/hooking-wp-cron-into-the-system-task-scheduler/) and point a real server cron at `wp-cron.php`. Sends that hit Discord's rate limit are retried once; the daily/countdown reminders that fail are re-tried on the next run rather than dropped.
+
+### Per-entry overrides
+
+Each release/event/DLC edit screen has a **Discord** box that overrides the global settings for that entry:
+
+- **Don't announce this entry** — skip it on every trigger
+- **Mention override** — ping a different role (e.g. `@everyone` for a big launch)
+- **Countdown days** — a custom lead time for that one entry
+
+### Branding
+
+The message name and avatar come from the webhook (step 1). The optional **Footer text** adds a small line at the bottom of each embed (defaults to the site name).
 
 ---
 
@@ -115,7 +175,7 @@ wp-env stop && wp-env start
 ## Releasing an update
 
 1. Make your changes
-2. Bump `GC_VERSION` in `game-calendar.php` (e.g. `1.0.0` → `1.1.0`)
+2. Bump the version in `game-calendar.php` (e.g. `1.0.0` → `1.1.0`) in **both** places: the `Version:` plugin header and the `GC_VERSION` constant — they must match
 3. Rebuild the zip:
    ```bash
    cd .. && zip -r game-calendar.zip game-calendar \
@@ -142,6 +202,7 @@ game-calendar/
 │   ├── class-calendar-query.php   # REST endpoint + shortcode
 │   ├── class-admin-calendar.php   # Admin calendar page + AJAX
 │   ├── class-settings.php         # Settings page
+│   ├── class-discord-notifier.php # Discord webhook notifications + cron
 │   └── lib/
 │       └── plugin-update-checker/ # Auto-updater library
 ├── admin/
