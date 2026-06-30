@@ -93,6 +93,7 @@ class GC_Meta_Boxes {
 				</tr>
 			</table>
 			<input type="hidden" id="gc_igdb_platforms" name="gc_igdb_platforms" value="" />
+			<?php $this->render_discord_fields( $post ); ?>
 		</div>
 		<?php
 	}
@@ -161,6 +162,7 @@ class GC_Meta_Boxes {
 				</td>
 			</tr>
 		</table>
+		<?php $this->render_discord_fields( $post ); ?>
 		<?php
 	}
 
@@ -195,7 +197,69 @@ class GC_Meta_Boxes {
 				<td><input type="date" id="gc_release_date" name="gc_release_date" value="<?php echo esc_attr( $release_date ); ?>" /></td>
 			</tr>
 		</table>
+		<?php $this->render_discord_fields( $post ); ?>
 		<?php
+	}
+
+	/**
+	 * Shared per-entry Discord overrides, rendered inside each detail meta box.
+	 */
+	private function render_discord_fields( $post ) {
+		$skip      = get_post_meta( $post->ID, 'gc_discord_skip', true );
+		$mention   = get_post_meta( $post->ID, 'gc_discord_mention_override', true );
+		$countdown = get_post_meta( $post->ID, 'gc_discord_countdown_days', true );
+		?>
+		<hr />
+		<p style="margin:0 0 8px;"><strong><?php esc_html_e( 'Discord', 'game-calendar' ); ?></strong></p>
+		<p style="margin:0 0 8px;">
+			<label>
+				<input type="checkbox" name="gc_discord_skip" value="1" <?php checked( $skip, 1 ); ?> />
+				<?php esc_html_e( 'Don\'t announce this entry on Discord', 'game-calendar' ); ?>
+			</label>
+		</p>
+		<table class="form-table gc-form-table">
+			<tr>
+				<th><label for="gc_discord_mention_override"><?php esc_html_e( 'Mention override', 'game-calendar' ); ?></label></th>
+				<td>
+					<input type="text" id="gc_discord_mention_override" name="gc_discord_mention_override" value="<?php echo esc_attr( $mention ); ?>" style="width:100%;" placeholder="@everyone" />
+					<p class="description"><?php esc_html_e( 'Overrides the global mention for this entry only. Leave blank to use the global setting.', 'game-calendar' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="gc_discord_countdown_days"><?php esc_html_e( 'Countdown days', 'game-calendar' ); ?></label></th>
+				<td>
+					<input type="number" id="gc_discord_countdown_days" name="gc_discord_countdown_days" min="1" max="60" value="<?php echo esc_attr( $countdown ); ?>" />
+					<p class="description"><?php esc_html_e( 'Override how many days before release the countdown fires. Leave blank to use the global setting.', 'game-calendar' ); ?></p>
+				</td>
+			</tr>
+		</table>
+		<?php
+	}
+
+	/**
+	 * Persist the shared Discord override fields. Callers must have already
+	 * verified their meta-box nonce before invoking this.
+	 */
+	private function save_discord_fields( $post_id ) {
+		if ( empty( $_POST['gc_discord_skip'] ) ) {
+			delete_post_meta( $post_id, 'gc_discord_skip' );
+		} else {
+			update_post_meta( $post_id, 'gc_discord_skip', 1 );
+		}
+
+		if ( isset( $_POST['gc_discord_mention_override'] ) ) {
+			$mention = preg_replace( '/[^a-zA-Z0-9 @&!<>#_-]/', '', wp_unslash( $_POST['gc_discord_mention_override'] ) );
+			update_post_meta( $post_id, 'gc_discord_mention_override', trim( $mention ) );
+		}
+
+		if ( isset( $_POST['gc_discord_countdown_days'] ) ) {
+			$days = trim( wp_unslash( $_POST['gc_discord_countdown_days'] ) );
+			if ( '' === $days ) {
+				delete_post_meta( $post_id, 'gc_discord_countdown_days' );
+			} else {
+				update_post_meta( $post_id, 'gc_discord_countdown_days', max( 1, absint( $days ) ) );
+			}
+		}
 	}
 
 	public function save( $post_id ) {
@@ -233,6 +297,8 @@ class GC_Meta_Boxes {
 					wp_set_object_terms( $post_id, array_values( $clean ), 'gc_platform' );
 				}
 			}
+
+			$this->save_discord_fields( $post_id );
 		}
 
 		if ( 'gc_event' === $post_type ) {
@@ -264,6 +330,8 @@ class GC_Meta_Boxes {
 			if ( isset( $_POST['gc_event_cover_url'] ) ) {
 				update_post_meta( $post_id, 'gc_event_cover_url', esc_url_raw( wp_unslash( $_POST['gc_event_cover_url'] ) ) );
 			}
+
+			$this->save_discord_fields( $post_id );
 		}
 
 		if ( 'gc_dlc' === $post_type ) {
@@ -276,6 +344,8 @@ class GC_Meta_Boxes {
 			if ( isset( $_POST['gc_parent_game'] ) ) {
 				update_post_meta( $post_id, 'gc_parent_game', absint( $_POST['gc_parent_game'] ) );
 			}
+
+			$this->save_discord_fields( $post_id );
 		}
 	}
 }
