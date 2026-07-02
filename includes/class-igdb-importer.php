@@ -248,7 +248,7 @@ class GC_IGDB_Importer {
 		$api = new GC_IGDB_API();
 		foreach ( array_chunk( array_keys( $id_map ), 500 ) as $chunk ) {
 			$ids_str = implode( ',', array_map( 'intval', $chunk ) );
-			$body    = 'fields id,first_release_date; where id = (' . $ids_str . '); limit 500;';
+			$body    = 'fields id,first_release_date,status; where id = (' . $ids_str . '); limit 500;';
 			$results = $api->query_games( $body );
 
 			if ( is_wp_error( $results ) || ! is_array( $results ) ) {
@@ -257,10 +257,23 @@ class GC_IGDB_Importer {
 
 			foreach ( $results as $igdb_game ) {
 				$igdb_id = (int) ( $igdb_game['id'] ?? 0 );
-				if ( ! isset( $id_map[ $igdb_id ] ) || empty( $igdb_game['first_release_date'] ) ) {
+				if ( ! isset( $id_map[ $igdb_id ] ) ) {
 					continue;
 				}
-				$post_id      = $id_map[ $igdb_id ];
+				$post_id = $id_map[ $igdb_id ];
+
+				// IGDB status 6 = Cancelled — move to draft so it leaves the public calendar.
+				if ( isset( $igdb_game['status'] ) && 6 === (int) $igdb_game['status'] ) {
+					$current_status = get_post_field( 'post_status', $post_id );
+					if ( 'publish' === $current_status ) {
+						wp_update_post( array( 'ID' => $post_id, 'post_status' => 'draft' ) );
+					}
+					continue;
+				}
+
+				if ( empty( $igdb_game['first_release_date'] ) ) {
+					continue;
+				}
 				$new_date     = gmdate( 'Y-m-d', (int) $igdb_game['first_release_date'] );
 				$current_date = get_post_meta( $post_id, 'gc_release_date', true );
 				if ( $new_date !== $current_date ) {
