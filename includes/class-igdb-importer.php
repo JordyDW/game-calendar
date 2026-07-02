@@ -146,20 +146,20 @@ class GC_IGDB_Importer {
 
 	// IGDB release_dates categories: 0=YYYYMMDD, 1=YYYYMMMM, 2=YYYYQ1, 3=YYYYQ2,
 	// 4=YYYYQ3, 5=YYYYQ4, 6=YYYY, 7=TBD.
-	// For imprecise dates we store the start of the known period (e.g. year-only → Jan 1)
-	// so entries don't cluster on Dec 31.
+	// Returns null when the date is too vague to place on a calendar (year/TBD only).
+	// Returns a Y-m-d string for exact or month-precision dates.
 	private static function resolve_release_date( $game ) {
-		$ts        = (int) ( $game['first_release_date'] ?? 0 );
-		$rd_list   = $game['release_dates'] ?? array();
-		$best_cat  = -1;
-		$best_y    = 0;
-		$best_m    = 0;
-		$best_ts   = $ts;
+		$ts      = (int) ( $game['first_release_date'] ?? 0 );
+		$rd_list = $game['release_dates'] ?? array();
+		$best_cat = -1;
+		$best_y   = 0;
+		$best_m   = 0;
+		$best_ts  = $ts;
 
 		foreach ( $rd_list as $rd ) {
 			$cat = isset( $rd['category'] ) ? (int) $rd['category'] : -1;
-			// Lower category = more precise (0 is exact day).
 			if ( $cat < 0 ) continue;
+			// Lower number = more precise (0 is exact day, 6 is year-only, 7 is TBD).
 			if ( $best_cat < 0 || $cat < $best_cat ) {
 				$best_cat = $cat;
 				$best_y   = (int) ( $rd['y'] ?? 0 );
@@ -168,39 +168,22 @@ class GC_IGDB_Importer {
 			}
 		}
 
+		// Exact day known (categories 0, or no release_dates array at all).
 		if ( $best_cat <= 0 && $best_ts ) {
-			// Exact date known.
 			return gmdate( 'Y-m-d', $best_ts );
 		}
-		if ( in_array( $best_cat, array( 1 ), true ) && $best_y && $best_m ) {
-			// Month precision.
+		// Month precision — place on the first of that month.
+		if ( 1 === $best_cat && $best_y && $best_m ) {
 			return sprintf( '%04d-%02d-01', $best_y, $best_m );
 		}
-		if ( in_array( $best_cat, array( 2 ), true ) && $best_y ) {
-			// Q1.
-			return sprintf( '%04d-01-01', $best_y );
-		}
-		if ( in_array( $best_cat, array( 3 ), true ) && $best_y ) {
-			// Q2.
-			return sprintf( '%04d-04-01', $best_y );
-		}
-		if ( in_array( $best_cat, array( 4 ), true ) && $best_y ) {
-			// Q3.
-			return sprintf( '%04d-07-01', $best_y );
-		}
-		if ( in_array( $best_cat, array( 5 ), true ) && $best_y ) {
-			// Q4.
-			return sprintf( '%04d-10-01', $best_y );
-		}
-		if ( in_array( $best_cat, array( 6 ), true ) && $best_y ) {
-			// Year only.
-			return sprintf( '%04d-01-01', $best_y );
-		}
-		// TBD or unknown — fall back to first_release_date timestamp if present.
-		if ( $ts ) {
-			return gmdate( 'Y-m-d', $ts );
-		}
-		return '';
+		// Quarter precision — place on the first day of that quarter.
+		if ( 2 === $best_cat && $best_y ) return sprintf( '%04d-01-01', $best_y ); // Q1
+		if ( 3 === $best_cat && $best_y ) return sprintf( '%04d-04-01', $best_y ); // Q2
+		if ( 4 === $best_cat && $best_y ) return sprintf( '%04d-07-01', $best_y ); // Q3
+		if ( 5 === $best_cat && $best_y ) return sprintf( '%04d-10-01', $best_y ); // Q4
+
+		// Year-only (6) or TBD (7): too vague — skip this game.
+		return null;
 	}
 
 	private function map_game( $game ) {
@@ -222,10 +205,10 @@ class GC_IGDB_Importer {
 			$cover = 'https:' . str_replace( 't_thumb', 't_cover_big', $game['cover']['url'] );
 		}
 
-		$release_date = '';
-		if ( ! empty( $game['first_release_date'] ) ) {
-			$release_date = self::resolve_release_date( $game );
-		}
+		// null means the date is too vague (year-only / TBD); caller should skip.
+		$release_date = ! empty( $game['first_release_date'] )
+			? self::resolve_release_date( $game )
+			: null;
 
 		$genre = '';
 		if ( ! empty( $game['genres'] ) ) {
@@ -265,7 +248,13 @@ class GC_IGDB_Importer {
 			return false;
 		}
 
-		$mapped      = $this->map_game( $game );
+		$mapped = $this->map_game( $game );
+
+		// Skip games with no specific release date (year-only or TBD on IGDB).
+		// They'll be picked up automatically once IGDB publishes a real date.
+		if ( null === $mapped['release_date'] ) {
+			return false;
+		}
 		$post_status = GC_Settings::get( 'gc_igdb_import_post_status', 'publish' );
 		$post_id     = wp_insert_post( array(
 			'post_title'   => $mapped['title'],
