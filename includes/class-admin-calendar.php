@@ -237,6 +237,7 @@ class GC_Admin_Calendar {
 			</div>
 
 			<div id="gc-popover" class="gc-admin-popover" hidden></div>
+			<div id="gc-toast" class="gc-toast" hidden></div>
 		</div>
 		<?php
 	}

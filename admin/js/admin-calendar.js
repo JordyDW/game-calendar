@@ -278,6 +278,7 @@
 				}
 				closeModal();
 				calendar.refetchEvents();
+				showToast( editingPostId ? 'Entry updated.' : 'Entry saved.' );
 			} )
 			.fail( function () {
 				showModalError( 'Request failed.' );
@@ -298,10 +299,47 @@
 		var input = document.getElementById( 'gc-modal-igdb' );
 		if ( ! input ) return;
 
+		var focusedIndex = -1;
+
+		function getItems() {
+			var r = document.getElementById( 'gc-modal-igdb-results' );
+			return r ? Array.prototype.slice.call( r.querySelectorAll( '.gc-igdb-item' ) ) : [];
+		}
+
+		function setFocus( items, idx ) {
+			focusedIndex = idx;
+			items.forEach( function ( item, i ) {
+				item.classList.toggle( 'gc-igdb-item--focused', i === idx );
+			} );
+			if ( items[ idx ] ) items[ idx ].scrollIntoView( { block: 'nearest' } );
+		}
+
+		input.addEventListener( 'keydown', function ( e ) {
+			var items = getItems();
+			var r     = document.getElementById( 'gc-modal-igdb-results' );
+			if ( ! r || r.hidden ) return;
+
+			if ( e.key === 'ArrowDown' ) {
+				e.preventDefault();
+				setFocus( items, Math.min( focusedIndex + 1, items.length - 1 ) );
+			} else if ( e.key === 'ArrowUp' ) {
+				e.preventDefault();
+				var next = focusedIndex - 1;
+				if ( next < 0 ) { setFocus( items, -1 ); input.focus(); }
+				else            { setFocus( items, next ); }
+			} else if ( e.key === 'Enter' && focusedIndex >= 0 ) {
+				e.preventDefault();
+				if ( items[ focusedIndex ] ) items[ focusedIndex ].click();
+			} else if ( e.key === 'Escape' ) {
+				r.hidden = true; r.innerHTML = ''; focusedIndex = -1;
+			}
+		} );
+
 		input.addEventListener( 'input', function () {
 			clearTimeout( igdbTimer );
-			var q           = this.value.trim();
-			var resultsEl   = document.getElementById( 'gc-modal-igdb-results' );
+			focusedIndex        = -1;
+			var q               = this.value.trim();
+			var resultsEl       = document.getElementById( 'gc-modal-igdb-results' );
 
 			if ( q.length < 2 ) {
 				resultsEl.hidden    = true;
@@ -320,6 +358,7 @@
 				} )
 				.done( function ( res ) {
 					resultsEl.innerHTML = '';
+					focusedIndex        = -1;
 					if ( ! res.success || ! res.data.length ) {
 						resultsEl.innerHTML = '<div class="gc-igdb-status">No results found.</div>';
 						return;
@@ -329,6 +368,7 @@
 					res.data.forEach( function ( game ) {
 						var li        = document.createElement( 'li' );
 						li.className  = 'gc-igdb-item';
+						li.setAttribute( 'tabindex', '-1' );
 						li.innerHTML  =
 							( game.cover
 								? '<img src="' + esc( game.cover ) + '" class="gc-igdb-thumb" alt="" />'
@@ -343,6 +383,7 @@
 							resultsEl.hidden    = true;
 							resultsEl.innerHTML = '';
 							input.value         = '';
+							focusedIndex        = -1;
 						} );
 						ul.appendChild( li );
 					} );
@@ -357,7 +398,7 @@
 		document.addEventListener( 'click', function ( e ) {
 			if ( ! e.target.closest( '#gc-modal-igdb, #gc-modal-igdb-results' ) ) {
 				var r = document.getElementById( 'gc-modal-igdb-results' );
-				if ( r ) r.hidden = true;
+				if ( r ) { r.hidden = true; focusedIndex = -1; }
 			}
 		} );
 	}
@@ -588,7 +629,8 @@
 		}
 
 		html += '<div class="gc-pop-body">';
-		html += '<span class="gc-pop-type">' + esc( typeLabels[ props.type ] || '' ) + '</span>';
+		var typeColor = ( gcAdminCal.colors && gcAdminCal.colors[ props.type ] ) || '#8c8f94';
+		html += '<span class="gc-pop-type"><span class="gc-pop-type-dot" style="background:' + esc( typeColor ) + '"></span>' + esc( typeLabels[ props.type ] || '' ) + '</span>';
 		html += '<strong class="gc-pop-title">' + esc( event.title ) + '</strong>';
 
 		if ( event.startStr ) {
@@ -604,10 +646,11 @@
 
 		html += '<div class="gc-pop-actions">';
 		if ( props.status === 'draft' ) {
-			html += '<button class="button button-primary button-small gc-pop-publish" data-id="' + event.id + '">Publish</button> ';
+			html += '<button class="button button-primary button-small gc-pop-publish" data-id="' + event.id + '">Publish</button>';
 		}
-		html += '<button class="button button-small gc-pop-edit" data-id="' + event.id + '">Edit</button> ';
+		html += '<button class="button button-small gc-pop-edit" data-id="' + event.id + '">Edit</button>';
 		html += '<button class="button button-small gc-pop-delete" data-id="' + event.id + '">Delete</button>';
+		html += '<a href="' + esc( gcAdminCal.adminUrl ) + 'post.php?post=' + esc( String( event.id ) ) + '&action=edit" target="_blank" class="gc-pop-editor-link">Full editor ↗</a>';
 		html += '</div>';
 
 		popover.innerHTML = html;
@@ -636,17 +679,32 @@
 
 		var delBtn = popover.querySelector( '.gc-pop-delete' );
 		if ( delBtn ) {
-			delBtn.addEventListener( 'click', function () {
-				if ( ! confirm( 'Delete this entry?' ) ) return;
-				$.post( gcAdminCal.ajaxUrl, {
-					action:  'gc_delete_entry',
-					nonce:   gcAdminCal.nonce,
-					post_id: parseInt( this.dataset.id, 10 ),
-				} ).done( function ( res ) {
-					if ( res.success ) {
-						hidePopover();
-						calendar.refetchEvents();
-					}
+			delBtn.addEventListener( 'click', function ( e ) {
+				e.stopPropagation();
+				var actionsEl = popover.querySelector( '.gc-pop-actions' );
+				actionsEl.innerHTML =
+					'<span class="gc-pop-confirm-label">Delete this entry?</span>' +
+					'<button class="button button-link-delete button-small gc-pop-confirm-yes" data-id="' + esc( String( event.id ) ) + '">Yes, delete</button>' +
+					'<button class="button button-small gc-pop-confirm-no">Cancel</button>';
+
+				actionsEl.querySelector( '.gc-pop-confirm-yes' ).addEventListener( 'click', function () {
+					var yesBtn = this;
+					yesBtn.disabled    = true;
+					yesBtn.textContent = 'Deleting…';
+					$.post( gcAdminCal.ajaxUrl, {
+						action:  'gc_delete_entry',
+						nonce:   gcAdminCal.nonce,
+						post_id: parseInt( yesBtn.dataset.id, 10 ),
+					} ).done( function ( res ) {
+						if ( res.success ) {
+							hidePopover();
+							calendar.refetchEvents();
+						}
+					} );
+				} );
+
+				actionsEl.querySelector( '.gc-pop-confirm-no' ).addEventListener( 'click', function () {
+					showPopover( event, triggerEl );
 				} );
 			} );
 		}
@@ -688,6 +746,22 @@
 		}
 	} );
 
+	// ── Toast notification ───────────────────────────────────────────────────
+
+	var toastTimer;
+	function showToast( msg ) {
+		var toast = document.getElementById( 'gc-toast' );
+		if ( ! toast ) return;
+		clearTimeout( toastTimer );
+		toast.textContent = msg;
+		toast.hidden      = false;
+		toast.style.opacity = '1';
+		toastTimer = setTimeout( function () {
+			toast.style.opacity = '0';
+			setTimeout( function () { toast.hidden = true; }, 300 );
+		}, 2200 );
+	}
+
 	// ── Utilities ────────────────────────────────────────────────────────────
 
 	function esc( str ) {
@@ -702,7 +776,13 @@
 	function formatDate( dateStr ) {
 		if ( ! dateStr ) return '';
 		try {
-			return new Date( dateStr ).toLocaleDateString( 'nl-BE', { year: 'numeric', month: 'long', day: 'numeric' } );
+			var hasTime = dateStr.indexOf( 'T' ) !== -1;
+			var d       = new Date( dateStr );
+			var locale  = navigator.language || 'en-GB';
+			if ( hasTime ) {
+				return d.toLocaleString( locale, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' } );
+			}
+			return d.toLocaleDateString( locale, { year: 'numeric', month: 'long', day: 'numeric' } );
 		} catch ( e ) {
 			return dateStr;
 		}

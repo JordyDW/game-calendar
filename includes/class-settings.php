@@ -190,12 +190,38 @@ class GC_Settings {
 					<span class="dashicons dashicons-admin-settings gc-toolbar-icon"></span>
 					<h1 class="gc-toolbar-title"><?php esc_html_e( 'Settings', 'game-calendar' ); ?></h1>
 				</div>
+				<button type="submit" form="gc-settings-form" class="gc-add-btn">
+					<?php esc_html_e( 'Save Settings', 'game-calendar' ); ?>
+				</button>
 			</div>
 
-			<form method="post" action="options.php" class="gc-settings-form">
+			<form method="post" action="options.php" class="gc-settings-form" id="gc-settings-form">
 				<?php settings_fields( self::OPTION_GROUP ); ?>
 
-				<div class="gc-settings-section">
+				<nav class="gc-settings-tabs-nav">
+					<button type="button" class="gc-settings-tab gc-settings-tab--active" data-target="igdb">
+						<span class="dashicons dashicons-games"></span>
+						<?php esc_html_e( 'IGDB', 'game-calendar' ); ?>
+					</button>
+					<button type="button" class="gc-settings-tab" data-target="import">
+						<span class="dashicons dashicons-download"></span>
+						<?php esc_html_e( 'Auto-Import', 'game-calendar' ); ?>
+					</button>
+					<button type="button" class="gc-settings-tab" data-target="discord">
+						<span class="dashicons dashicons-megaphone"></span>
+						<?php esc_html_e( 'Discord', 'game-calendar' ); ?>
+					</button>
+					<button type="button" class="gc-settings-tab" data-target="appearance">
+						<span class="dashicons dashicons-art"></span>
+						<?php esc_html_e( 'Appearance', 'game-calendar' ); ?>
+					</button>
+					<button type="button" class="gc-settings-tab" data-target="updates">
+						<span class="dashicons dashicons-update"></span>
+						<?php esc_html_e( 'Updates', 'game-calendar' ); ?>
+					</button>
+				</nav>
+
+				<div class="gc-settings-section" data-gc-tab="igdb">
 					<div class="gc-settings-section-head">
 						<h2 class="gc-settings-section-title">
 							<span class="dashicons dashicons-games"></span>
@@ -268,7 +294,7 @@ class GC_Settings {
 					</div>
 				</div>
 
-				<div class="gc-settings-section">
+				<div class="gc-settings-section" data-gc-tab="import">
 					<div class="gc-settings-section-head">
 						<h2 class="gc-settings-section-title">
 							<span class="dashicons dashicons-download"></span>
@@ -369,15 +395,17 @@ class GC_Settings {
 						<div class="gc-settings-row">
 							<label class="gc-settings-label"><?php esc_html_e( 'Platforms', 'game-calendar' ); ?></label>
 							<div class="gc-settings-control">
-								<?php foreach ( GC_IGDB_Importer::PLATFORM_MAP as $pid => $pname ) : ?>
-									<label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-										<input type="checkbox"
-											name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_auto_import_platforms][]"
-											value="<?php echo esc_attr( $pid ); ?>"
-											<?php checked( in_array( $pid, $ai_platforms, false ) ); ?> />
-										<?php echo esc_html( $pname ); ?>
-									</label>
-								<?php endforeach; ?>
+								<div class="gc-platform-grid">
+									<?php foreach ( GC_IGDB_Importer::PLATFORM_MAP as $pid => $pname ) : ?>
+										<label class="gc-platform-label">
+											<input type="checkbox"
+												name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_auto_import_platforms][]"
+												value="<?php echo esc_attr( $pid ); ?>"
+												<?php checked( in_array( $pid, $ai_platforms, false ) ); ?> />
+											<?php echo esc_html( $pname ); ?>
+										</label>
+									<?php endforeach; ?>
+								</div>
 								<p class="gc-settings-hint"><?php esc_html_e( 'Only import games available on at least one of the checked platforms. Uncheck all to import across all platforms.', 'game-calendar' ); ?></p>
 							</div>
 						</div>
@@ -398,10 +426,19 @@ class GC_Settings {
 						<div class="gc-settings-row gc-test-row">
 							<span class="gc-settings-label"></span>
 							<div class="gc-settings-control">
-								<button type="button" id="gc-run-import" class="button button-secondary">
-									<?php esc_html_e( 'Run Now', 'game-calendar' ); ?>
-								</button>
-								<span id="gc-run-import-result" class="gc-test-result"></span>
+								<div style="display:flex;align-items:center;gap:8px;">
+									<button type="button" id="gc-run-import" class="button button-secondary">
+										<?php esc_html_e( 'Run Now', 'game-calendar' ); ?>
+									</button>
+									<span id="gc-run-import-spinner" class="gc-spinner" hidden></span>
+									<span id="gc-run-import-result" class="gc-test-result"></span>
+								</div>
+								<p id="gc-run-import-notice" class="gc-run-import-notice" hidden>
+									<?php echo wp_kses(
+										__( 'You have unsaved changes — <strong>Run Now uses the last saved settings.</strong> Save first to apply your changes.', 'game-calendar' ),
+										array( 'strong' => array() )
+									); ?>
+								</p>
 								<p class="gc-settings-hint">
 									<?php
 									if ( $ai_next_run ) {
@@ -437,38 +474,7 @@ class GC_Settings {
 					</div>
 				</div>
 
-				<div class="gc-settings-section">
-					<div class="gc-settings-section-head">
-						<h2 class="gc-settings-section-title">
-							<span class="dashicons dashicons-update"></span>
-							<?php esc_html_e( 'Auto-Updates', 'game-calendar' ); ?>
-						</h2>
-						<p class="gc-settings-section-desc">
-							<?php echo wp_kses(
-								__( 'A GitHub Personal Access Token is required to check for plugin updates. Create one at <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">github.com/settings/tokens</a> — classic token, <strong>no scopes needed</strong>. This authenticates the GitHub API call and avoids rate-limit errors.', 'game-calendar' ),
-								array( 'a' => array( 'href' => array(), 'target' => array(), 'rel' => array() ), 'strong' => array() )
-							); ?>
-						</p>
-					</div>
-					<div class="gc-settings-section-body">
-						<div class="gc-settings-row">
-							<label class="gc-settings-label" for="gc-github-token">
-								<?php esc_html_e( 'GitHub Token', 'game-calendar' ); ?>
-							</label>
-							<div class="gc-settings-control">
-								<input type="password" id="gc-github-token"
-									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_github_token]"
-									value=""
-									placeholder="<?php echo esc_attr( $github_stored ? str_repeat( '•', 20 ) : __( 'ghp_…', 'game-calendar' ) ); ?>"
-									class="gc-settings-input"
-									autocomplete="new-password" />
-								<p class="gc-settings-hint"><?php esc_html_e( 'Leave blank to keep the saved token.', 'game-calendar' ); ?></p>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<div class="gc-settings-section">
+				<div class="gc-settings-section" data-gc-tab="discord">
 					<div class="gc-settings-section-head">
 						<h2 class="gc-settings-section-title">
 							<span class="dashicons dashicons-megaphone"></span>
@@ -498,28 +504,6 @@ class GC_Settings {
 						</div>
 
 						<div class="gc-settings-row">
-							<label class="gc-settings-label"><?php esc_html_e( 'Triggers', 'game-calendar' ); ?></label>
-							<div class="gc-settings-control">
-								<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_instant]" value="1" <?php checked( $d_instant ); ?> />
-									<?php esc_html_e( 'Instant — announce each entry the first time it is published', 'game-calendar' ); ?>
-								</label>
-								<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_daily]" value="1" <?php checked( $d_daily ); ?> />
-									<?php esc_html_e( 'Daily — each morning, post what releases that day', 'game-calendar' ); ?>
-								</label>
-								<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_countdown]" value="1" <?php checked( $d_countdown ); ?> />
-									<?php esc_html_e( 'Countdown — post a reminder a set number of days before release', 'game-calendar' ); ?>
-								</label>
-								<label style="display:flex;align-items:center;gap:6px;">
-									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_weekly]" value="1" <?php checked( $d_weekly ); ?> />
-									<?php esc_html_e( 'Weekly digest — once a week, recap the coming 7 days', 'game-calendar' ); ?>
-								</label>
-							</div>
-						</div>
-
-						<div class="gc-settings-row">
 							<label class="gc-settings-label"><?php esc_html_e( 'Entry types', 'game-calendar' ); ?></label>
 							<div class="gc-settings-control">
 								<?php
@@ -540,38 +524,70 @@ class GC_Settings {
 						</div>
 
 						<div class="gc-settings-row">
-							<label class="gc-settings-label" for="gc-discord-daily-time"><?php esc_html_e( 'Daily time', 'game-calendar' ); ?></label>
+							<label class="gc-settings-label"><?php esc_html_e( 'Instant', 'game-calendar' ); ?></label>
 							<div class="gc-settings-control">
-								<input type="time" id="gc-discord-daily-time" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_daily_time]" value="<?php echo esc_attr( $d_daily_time ); ?>" />
-								<p class="gc-settings-hint"><?php esc_html_e( 'When the daily and countdown posts go out (site timezone).', 'game-calendar' ); ?></p>
+								<label style="display:flex;align-items:center;gap:6px;">
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_instant]" value="1" <?php checked( $d_instant ); ?> />
+									<?php esc_html_e( 'Announce each entry the first time it is published', 'game-calendar' ); ?>
+								</label>
 							</div>
 						</div>
 
 						<div class="gc-settings-row">
-							<label class="gc-settings-label" for="gc-discord-countdown-days"><?php esc_html_e( 'Countdown days', 'game-calendar' ); ?></label>
+							<label class="gc-settings-label"><?php esc_html_e( 'Daily', 'game-calendar' ); ?></label>
 							<div class="gc-settings-control">
-								<input type="number" id="gc-discord-countdown-days" min="1" max="60" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_countdown_days]" value="<?php echo esc_attr( $d_countdown_days ); ?>" />
-								<p class="gc-settings-hint"><?php esc_html_e( 'Days before a release to post the countdown reminder. Can be overridden per entry.', 'game-calendar' ); ?></p>
+								<label style="display:flex;align-items:center;gap:6px;">
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_daily]" value="1" <?php checked( $d_daily ); ?> />
+									<?php esc_html_e( 'Each morning, post what releases that day', 'game-calendar' ); ?>
+								</label>
+								<div class="gc-trigger-sub">
+									<label for="gc-discord-daily-time"><?php esc_html_e( 'Send at', 'game-calendar' ); ?></label>
+									<input type="time" id="gc-discord-daily-time" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_daily_time]" value="<?php echo esc_attr( $d_daily_time ); ?>" />
+									<span class="gc-trigger-sub-hint"><?php esc_html_e( 'site timezone', 'game-calendar' ); ?></span>
+								</div>
 							</div>
 						</div>
 
 						<div class="gc-settings-row">
-							<label class="gc-settings-label" for="gc-discord-weekly-day"><?php esc_html_e( 'Weekly digest', 'game-calendar' ); ?></label>
-							<div class="gc-settings-control gc-color-control">
-								<select id="gc-discord-weekly-day" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_weekly_day]">
-									<?php
-									$wp_locale = $GLOBALS['wp_locale'];
-									for ( $i = 0; $i <= 6; $i++ ) {
-										printf(
-											'<option value="%d" %s>%s</option>',
-											(int) $i,
-											selected( $d_weekly_day, $i, false ),
-											esc_html( $wp_locale->get_weekday( $i ) )
-										);
-									}
-									?>
-								</select>
-								<input type="time" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_weekly_time]" value="<?php echo esc_attr( $d_weekly_time ); ?>" />
+							<label class="gc-settings-label"><?php esc_html_e( 'Countdown', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<label style="display:flex;align-items:center;gap:6px;">
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_countdown]" value="1" <?php checked( $d_countdown ); ?> />
+									<?php esc_html_e( 'Post a reminder a set number of days before release', 'game-calendar' ); ?>
+								</label>
+								<div class="gc-trigger-sub">
+									<input type="number" id="gc-discord-countdown-days" min="1" max="60" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_countdown_days]" value="<?php echo esc_attr( $d_countdown_days ); ?>" style="width:64px;" />
+									<label for="gc-discord-countdown-days"><?php esc_html_e( 'days before release', 'game-calendar' ); ?></label>
+									<span class="gc-trigger-sub-hint"><?php esc_html_e( '(can be overridden per entry)', 'game-calendar' ); ?></span>
+								</div>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label"><?php esc_html_e( 'Weekly digest', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<label style="display:flex;align-items:center;gap:6px;">
+									<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_enable_weekly]" value="1" <?php checked( $d_weekly ); ?> />
+									<?php esc_html_e( 'Once a week, recap the coming 7 days', 'game-calendar' ); ?>
+								</label>
+								<div class="gc-trigger-sub">
+									<label for="gc-discord-weekly-day"><?php esc_html_e( 'Every', 'game-calendar' ); ?></label>
+									<select id="gc-discord-weekly-day" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_weekly_day]">
+										<?php
+										$wp_locale = $GLOBALS['wp_locale'];
+										for ( $i = 0; $i <= 6; $i++ ) {
+											printf(
+												'<option value="%d" %s>%s</option>',
+												(int) $i,
+												selected( $d_weekly_day, $i, false ),
+												esc_html( $wp_locale->get_weekday( $i ) )
+											);
+										}
+										?>
+									</select>
+									<?php esc_html_e( 'at', 'game-calendar' ); ?>
+									<input type="time" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_weekly_time]" value="<?php echo esc_attr( $d_weekly_time ); ?>" />
+								</div>
 							</div>
 						</div>
 
@@ -621,7 +637,7 @@ class GC_Settings {
 					</div>
 				</div>
 
-				<div class="gc-settings-section">
+				<div class="gc-settings-section" data-gc-tab="appearance">
 					<div class="gc-settings-section-head">
 						<h2 class="gc-settings-section-title">
 							<span class="dashicons dashicons-art"></span>
@@ -659,6 +675,37 @@ class GC_Settings {
 					</div>
 				</div>
 
+				<div class="gc-settings-section" data-gc-tab="updates">
+					<div class="gc-settings-section-head">
+						<h2 class="gc-settings-section-title">
+							<span class="dashicons dashicons-update"></span>
+							<?php esc_html_e( 'Auto-Updates', 'game-calendar' ); ?>
+						</h2>
+						<p class="gc-settings-section-desc">
+							<?php echo wp_kses(
+								__( 'A GitHub Personal Access Token is required to check for plugin updates. Create one at <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">github.com/settings/tokens</a> — classic token, <strong>no scopes needed</strong>. This authenticates the GitHub API call and avoids rate-limit errors.', 'game-calendar' ),
+								array( 'a' => array( 'href' => array(), 'target' => array(), 'rel' => array() ), 'strong' => array() )
+							); ?>
+						</p>
+					</div>
+					<div class="gc-settings-section-body">
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-github-token">
+								<?php esc_html_e( 'GitHub Token', 'game-calendar' ); ?>
+							</label>
+							<div class="gc-settings-control">
+								<input type="password" id="gc-github-token"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_github_token]"
+									value=""
+									placeholder="<?php echo esc_attr( $github_stored ? str_repeat( '•', 20 ) : __( 'ghp_…', 'game-calendar' ) ); ?>"
+									class="gc-settings-input"
+									autocomplete="new-password" />
+								<p class="gc-settings-hint"><?php esc_html_e( 'Leave blank to keep the saved token.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+					</div>
+				</div>
+
 				<div class="gc-settings-footer">
 					<?php submit_button( __( 'Save Settings', 'game-calendar' ), 'primary', 'submit', false ); ?>
 				</div>
@@ -668,6 +715,47 @@ class GC_Settings {
 
 		<script>
 		( function () {
+			// Tab switching.
+			var tabs     = document.querySelectorAll( '.gc-settings-tab' );
+			var sections = document.querySelectorAll( '.gc-settings-section[data-gc-tab]' );
+			var STORAGE_KEY = 'gc_settings_tab';
+
+			function activateTab( tabId ) {
+				tabs.forEach( function ( t ) {
+					t.classList.toggle( 'gc-settings-tab--active', t.dataset.target === tabId );
+				} );
+				sections.forEach( function ( s ) {
+					s.hidden = s.dataset.gcTab !== tabId;
+				} );
+				try { localStorage.setItem( STORAGE_KEY, tabId ); } catch ( e ) {}
+			}
+
+			var validIds  = Array.from( tabs ).map( function ( t ) { return t.dataset.target; } );
+			var initial   = 'igdb';
+			try { initial = localStorage.getItem( STORAGE_KEY ) || 'igdb'; } catch ( e ) {}
+			if ( validIds.indexOf( initial ) === -1 ) initial = validIds[0] || 'igdb';
+
+			activateTab( initial );
+
+			tabs.forEach( function ( tab ) {
+				tab.addEventListener( 'click', function () { activateTab( this.dataset.target ); } );
+			} );
+
+			// Show a warning near "Run Now" when the form has unsaved changes.
+			( function () {
+				var notice = document.getElementById( 'gc-run-import-notice' );
+				var form   = document.getElementById( 'gc-settings-form' );
+				if ( ! notice || ! form ) return;
+				var dirty = false;
+				function markDirty() {
+					if ( dirty ) return;
+					dirty = true;
+					notice.hidden = false;
+				}
+				form.addEventListener( 'input',  markDirty );
+				form.addEventListener( 'change', markDirty );
+			} )();
+
 			// Test connection.
 			document.getElementById( 'gc-test-connection' ).addEventListener( 'click', function () {
 				var btn    = this;
@@ -697,10 +785,12 @@ class GC_Settings {
 			var runImportBtn = document.getElementById( 'gc-run-import' );
 			if ( runImportBtn ) {
 				runImportBtn.addEventListener( 'click', function () {
-					var btn    = this;
-					var result = document.getElementById( 'gc-run-import-result' );
+					var btn     = this;
+					var spinner = document.getElementById( 'gc-run-import-spinner' );
+					var result  = document.getElementById( 'gc-run-import-result' );
 					btn.disabled       = true;
-					result.textContent = '<?php echo esc_js( __( 'Importing…', 'game-calendar' ) ); ?>';
+					spinner.hidden     = false;
+					result.textContent = '';
 					result.className   = 'gc-test-result';
 					fetch( ajaxurl, {
 						method:  'POST',
@@ -710,10 +800,12 @@ class GC_Settings {
 							nonce:  '<?php echo esc_js( wp_create_nonce( 'gc_igdb_run_import' ) ); ?>'
 						} )
 					} ).then( function ( r ) { return r.json(); } ).then( function ( data ) {
+						spinner.hidden     = true;
 						result.textContent = data.data.message;
 						result.classList.add( data.success ? 'gc-test-ok' : 'gc-test-fail' );
 						btn.disabled = false;
 					} ).catch( function () {
+						spinner.hidden     = true;
 						result.textContent = '<?php echo esc_js( __( 'Request failed.', 'game-calendar' ) ); ?>';
 						result.classList.add( 'gc-test-fail' );
 						btn.disabled = false;
