@@ -452,7 +452,20 @@ class GC_Discord_Notifier {
 			$embed['thumbnail'] = array( 'url' => $f['cover'] );
 		}
 
-		$embed['fields'] = $this->embed_fields( $f );
+		$fields = $this->embed_fields( $f );
+
+		// Optional link back to the site's calendar page. Empty setting → omitted,
+		// so installs without a configured calendar page behave exactly as before.
+		$calendar_url = GC_Settings::get( 'gc_discord_calendar_url' );
+		if ( $calendar_url ) {
+			$fields[] = array(
+				'name'   => '📅 ' . __( 'Calendar', 'game-calendar' ),
+				'value'  => sprintf( '[%s](%s)', __( 'View the full calendar', 'game-calendar' ), esc_url( $calendar_url ) ),
+				'inline' => false,
+			);
+		}
+
+		$embed['fields'] = $fields;
 
 		$footer = GC_Settings::get( 'gc_discord_footer', get_bloginfo( 'name' ) );
 		if ( $footer ) {

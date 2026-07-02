@@ -109,6 +109,10 @@ Each release/event/DLC edit screen has a **Discord** box that overrides the glob
 - **Mention override** — ping a different role (e.g. `@everyone` for a big launch)
 - **Countdown days** — a custom lead time for that one entry
 
+### Link back to your calendar
+
+Set **Calendar page URL** to the page where you placed the `[game_calendar]` shortcode, and every embed gains a **📅 View the full calendar** link — a one-click path from Discord back to the site. Leave it blank to omit the link entirely.
+
 ### Branding
 
 The message name and avatar come from the webhook (step 1). The optional **Footer text** adds a small line at the bottom of each embed (defaults to the site name).

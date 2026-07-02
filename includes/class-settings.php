@@ -84,6 +84,8 @@ class GC_Settings {
 
 		$output['gc_discord_footer']     = isset( $input['gc_discord_footer'] ) ? sanitize_text_field( $input['gc_discord_footer'] ) : ( $existing['gc_discord_footer'] ?? '' );
 
+		$output['gc_discord_calendar_url'] = isset( $input['gc_discord_calendar_url'] ) ? esc_url_raw( trim( $input['gc_discord_calendar_url'] ) ) : ( $existing['gc_discord_calendar_url'] ?? '' );
+
 		foreach ( array( 'gc_color_release', 'gc_color_event' ) as $color_key ) {
 			$output[ $color_key ] = isset( $input[ $color_key ] )
 				? sanitize_hex_color( $input[ $color_key ] )
@@ -130,6 +132,7 @@ class GC_Settings {
 		$d_weekly_day     = isset( $options['gc_discord_weekly_day'] ) ? (int) $options['gc_discord_weekly_day'] : 1;
 		$d_countdown_days = isset( $options['gc_discord_countdown_days'] ) ? (int) $options['gc_discord_countdown_days'] : 1;
 		$d_footer         = $options['gc_discord_footer']          ?? '';
+		$d_calendar_url   = $options['gc_discord_calendar_url']    ?? '';
 		?>
 		<div class="gc-admin-page">
 
@@ -368,6 +371,14 @@ class GC_Settings {
 										array( 'code' => array() )
 									); ?>
 								</p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-discord-calendar-url"><?php esc_html_e( 'Calendar page URL', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<input type="url" id="gc-discord-calendar-url" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_discord_calendar_url]" value="<?php echo esc_attr( $d_calendar_url ); ?>" class="gc-settings-input" placeholder="https://example.com/calendar" />
+								<p class="gc-settings-hint"><?php esc_html_e( 'The page where you embedded the [game_calendar] shortcode. When set, each embed gets a “View the full calendar” link. Leave blank to omit it.', 'game-calendar' ); ?></p>
 							</div>
 						</div>
 
