@@ -90,10 +90,12 @@ class GC_Calendar_Query {
 				);
 			}
 
+			$include_drafts = is_user_logged_in() && current_user_can( 'edit_posts' );
+
 			$args = array(
 				'post_type'      => $post_type,
 				'posts_per_page' => 200,
-				'post_status'    => 'publish',
+				'post_status'    => $include_drafts ? array( 'publish', 'draft' ) : 'publish',
 				'meta_key'       => $meta_key,
 				'orderby'        => 'meta_value',
 				'order'          => 'ASC',
@@ -138,6 +140,7 @@ class GC_Calendar_Query {
 						'type'    => $post_type,
 						'cover'   => $cover,
 						'address' => $address,
+						'status'  => $post->post_status,
 					),
 				);
 

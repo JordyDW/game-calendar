@@ -82,6 +82,10 @@ class GC_IGDB_API {
 		return json_decode( wp_remote_retrieve_body( $response ), true );
 	}
 
+	public function query_games( $body ) {
+		return $this->request( 'games', $body );
+	}
+
 	public function search_games( $query ) {
 		$search_mode = GC_Settings::get( 'gc_igdb_search_mode', 'future_releases' );
 

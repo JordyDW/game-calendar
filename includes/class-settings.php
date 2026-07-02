@@ -95,6 +95,38 @@ class GC_Settings {
 		// Preserve legacy gc_color_dlc without exposing it in the UI.
 		$output['gc_color_dlc'] = $existing['gc_color_dlc'] ?? '#22c55e';
 
+		// --- IGDB Auto-Import --------------------------------------------
+
+		$output['gc_igdb_auto_import_enabled'] = empty( $input['gc_igdb_auto_import_enabled'] ) ? 0 : 1;
+
+		$valid_freqs = array( 'daily', 'weekly' );
+		$output['gc_igdb_auto_import_frequency'] = ( isset( $input['gc_igdb_auto_import_frequency'] ) && in_array( $input['gc_igdb_auto_import_frequency'], $valid_freqs, true ) )
+			? $input['gc_igdb_auto_import_frequency']
+			: ( $existing['gc_igdb_auto_import_frequency'] ?? 'daily' );
+
+		$valid_statuses = array( 'publish', 'draft' );
+		$output['gc_igdb_import_post_status'] = ( isset( $input['gc_igdb_import_post_status'] ) && in_array( $input['gc_igdb_import_post_status'], $valid_statuses, true ) )
+			? $input['gc_igdb_import_post_status']
+			: ( $existing['gc_igdb_import_post_status'] ?? 'publish' );
+
+		$output['gc_igdb_hypes_threshold'] = isset( $input['gc_igdb_hypes_threshold'] )
+			? max( 0, (int) $input['gc_igdb_hypes_threshold'] )
+			: ( $existing['gc_igdb_hypes_threshold'] ?? 5 );
+
+		$output['gc_igdb_import_window_days'] = isset( $input['gc_igdb_import_window_days'] )
+			? max( 30, min( 730, (int) $input['gc_igdb_import_window_days'] ) )
+			: ( $existing['gc_igdb_import_window_days'] ?? 365 );
+
+		$valid_platform_ids = array_keys( GC_IGDB_Importer::PLATFORM_MAP );
+		$raw_platforms = ( isset( $input['gc_igdb_auto_import_platforms'] ) && is_array( $input['gc_igdb_auto_import_platforms'] ) )
+			? $input['gc_igdb_auto_import_platforms']
+			: null;
+		$output['gc_igdb_auto_import_platforms'] = null !== $raw_platforms
+			? array_values( array_intersect( array_map( 'intval', $raw_platforms ), $valid_platform_ids ) )
+			: ( $existing['gc_igdb_auto_import_platforms'] ?? $valid_platform_ids );
+
+		$output['gc_igdb_suppress_discord'] = empty( $input['gc_igdb_suppress_discord'] ) ? 0 : 1;
+
 		// Invalidate cached IGDB token when credentials change.
 		if (
 			( $output['gc_igdb_client_id'] !== ( $existing['gc_igdb_client_id'] ?? '' ) ) ||
@@ -117,6 +149,18 @@ class GC_Settings {
 		$color_release  = $options['gc_color_release']      ?? '#ac00fb';
 		$color_event    = $options['gc_color_event']        ?? '#96eefe';
 		$search_mode    = $options['gc_igdb_search_mode']   ?? 'future_releases';
+
+		$ai_enabled     = ! empty( $options['gc_igdb_auto_import_enabled'] );
+		$ai_frequency   = $options['gc_igdb_auto_import_frequency']  ?? 'daily';
+		$ai_status      = $options['gc_igdb_import_post_status']     ?? 'publish';
+		$ai_threshold   = isset( $options['gc_igdb_hypes_threshold'] ) ? (int) $options['gc_igdb_hypes_threshold'] : 5;
+		$ai_window      = isset( $options['gc_igdb_import_window_days'] ) ? (int) $options['gc_igdb_import_window_days'] : 365;
+		$ai_platforms   = isset( $options['gc_igdb_auto_import_platforms'] ) && is_array( $options['gc_igdb_auto_import_platforms'] )
+			? $options['gc_igdb_auto_import_platforms']
+			: array_keys( GC_IGDB_Importer::PLATFORM_MAP );
+		$ai_suppress    = ! empty( $options['gc_igdb_suppress_discord'] );
+		$ai_next_run    = wp_next_scheduled( GC_IGDB_Importer::CRON_HOOK );
+		$ai_last        = get_option( 'gc_igdb_last_import', array() );
 
 		$discord_stored   = $options['gc_discord_webhook_url']  ?? '';
 		$d_instant        = ! empty( $options['gc_discord_enable_instant'] );
@@ -216,6 +260,155 @@ class GC_Settings {
 								<span id="gc-test-result" class="gc-test-result"></span>
 							</div>
 						</div>
+					</div>
+				</div>
+
+				<div class="gc-settings-section">
+					<div class="gc-settings-section-head">
+						<h2 class="gc-settings-section-title">
+							<span class="dashicons dashicons-download"></span>
+							<?php esc_html_e( 'Auto-Import', 'game-calendar' ); ?>
+						</h2>
+						<p class="gc-settings-section-desc">
+							<?php esc_html_e( 'Automatically pull popular upcoming game releases from IGDB on a schedule. Each run also syncs release dates on existing entries that were imported from IGDB.', 'game-calendar' ); ?>
+						</p>
+					</div>
+					<div class="gc-settings-section-body">
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-ai-enabled">
+								<?php esc_html_e( 'Enable', 'game-calendar' ); ?>
+							</label>
+							<div class="gc-settings-control">
+								<label style="display:flex;align-items:center;gap:6px;">
+									<input type="checkbox" id="gc-ai-enabled"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_auto_import_enabled]"
+										value="1" <?php checked( $ai_enabled ); ?> />
+									<?php esc_html_e( 'Enable scheduled auto-import', 'game-calendar' ); ?>
+								</label>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label"><?php esc_html_e( 'Frequency', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+									<input type="radio"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_auto_import_frequency]"
+										value="daily" <?php checked( $ai_frequency, 'daily' ); ?> />
+									<?php esc_html_e( 'Daily', 'game-calendar' ); ?>
+								</label>
+								<label style="display:flex;align-items:center;gap:6px;">
+									<input type="radio"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_auto_import_frequency]"
+										value="weekly" <?php checked( $ai_frequency, 'weekly' ); ?> />
+									<?php esc_html_e( 'Weekly', 'game-calendar' ); ?>
+								</label>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label"><?php esc_html_e( 'Import as', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+									<input type="radio"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_import_post_status]"
+										value="publish" <?php checked( $ai_status, 'publish' ); ?> />
+									<?php esc_html_e( 'Published — entries appear on the calendar immediately', 'game-calendar' ); ?>
+								</label>
+								<label style="display:flex;align-items:center;gap:6px;">
+									<input type="radio"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_import_post_status]"
+										value="draft" <?php checked( $ai_status, 'draft' ); ?> />
+									<?php esc_html_e( 'Draft — you review and publish each entry manually', 'game-calendar' ); ?>
+								</label>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-ai-threshold">
+								<?php esc_html_e( 'Hypes threshold', 'game-calendar' ); ?>
+							</label>
+							<div class="gc-settings-control">
+								<input type="number" id="gc-ai-threshold" min="0" max="9999"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_hypes_threshold]"
+									value="<?php echo esc_attr( $ai_threshold ); ?>" />
+								<p class="gc-settings-hint"><?php esc_html_e( 'Minimum IGDB hypes score. Games with no hypes score are excluded. Recommended: 5–20.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-ai-window">
+								<?php esc_html_e( 'Look ahead (days)', 'game-calendar' ); ?>
+							</label>
+							<div class="gc-settings-control">
+								<input type="number" id="gc-ai-window" min="30" max="730"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_import_window_days]"
+									value="<?php echo esc_attr( $ai_window ); ?>" />
+								<p class="gc-settings-hint"><?php esc_html_e( 'Only import games releasing within this many days from today (30–730).', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label"><?php esc_html_e( 'Platforms', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<?php foreach ( GC_IGDB_Importer::PLATFORM_MAP as $pid => $pname ) : ?>
+									<label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+										<input type="checkbox"
+											name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_auto_import_platforms][]"
+											value="<?php echo esc_attr( $pid ); ?>"
+											<?php checked( in_array( $pid, $ai_platforms, false ) ); ?> />
+										<?php echo esc_html( $pname ); ?>
+									</label>
+								<?php endforeach; ?>
+								<p class="gc-settings-hint"><?php esc_html_e( 'Only import games available on at least one of the checked platforms. Uncheck all to import across all platforms.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
+							<label class="gc-settings-label"><?php esc_html_e( 'Discord', 'game-calendar' ); ?></label>
+							<div class="gc-settings-control">
+								<label style="display:flex;align-items:center;gap:6px;">
+									<input type="checkbox"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_suppress_discord]"
+										value="1" <?php checked( $ai_suppress ); ?> />
+									<?php esc_html_e( 'Suppress instant Discord announcement for auto-imported entries', 'game-calendar' ); ?>
+								</label>
+								<p class="gc-settings-hint"><?php esc_html_e( 'Recommended when importing many games at once. Daily/weekly digests are unaffected.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row gc-test-row">
+							<span class="gc-settings-label"></span>
+							<div class="gc-settings-control">
+								<button type="button" id="gc-run-import" class="button button-secondary">
+									<?php esc_html_e( 'Run Now', 'game-calendar' ); ?>
+								</button>
+								<span id="gc-run-import-result" class="gc-test-result"></span>
+								<p class="gc-settings-hint">
+									<?php
+									if ( $ai_next_run ) {
+										echo esc_html( sprintf(
+											/* translators: %s: formatted date/time */
+											__( 'Next scheduled run: %s.', 'game-calendar' ),
+											wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $ai_next_run )
+										) );
+									} else {
+										esc_html_e( 'No run scheduled — enable auto-import and save.', 'game-calendar' );
+									}
+									if ( ! empty( $ai_last['time'] ) ) {
+										echo ' ' . esc_html( sprintf(
+											/* translators: 1: date/time, 2: count */
+											__( 'Last run: %1$s (%2$d new entries).', 'game-calendar' ),
+											$ai_last['time'],
+											(int) ( $ai_last['imported'] ?? 0 )
+										) );
+									}
+									?>
+								</p>
+							</div>
+						</div>
+
 					</div>
 				</div>
 
@@ -474,6 +667,34 @@ class GC_Settings {
 					btn.disabled = false;
 				} );
 			} );
+
+			// Run auto-import now.
+			var runImportBtn = document.getElementById( 'gc-run-import' );
+			if ( runImportBtn ) {
+				runImportBtn.addEventListener( 'click', function () {
+					var btn    = this;
+					var result = document.getElementById( 'gc-run-import-result' );
+					btn.disabled       = true;
+					result.textContent = '<?php echo esc_js( __( 'Importing…', 'game-calendar' ) ); ?>';
+					result.className   = 'gc-test-result';
+					fetch( ajaxurl, {
+						method:  'POST',
+						headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+						body:    new URLSearchParams( {
+							action: 'gc_igdb_run_import',
+							nonce:  '<?php echo esc_js( wp_create_nonce( 'gc_igdb_run_import' ) ); ?>'
+						} )
+					} ).then( function ( r ) { return r.json(); } ).then( function ( data ) {
+						result.textContent = data.data.message;
+						result.classList.add( data.success ? 'gc-test-ok' : 'gc-test-fail' );
+						btn.disabled = false;
+					} ).catch( function () {
+						result.textContent = '<?php echo esc_js( __( 'Request failed.', 'game-calendar' ) ); ?>';
+						result.classList.add( 'gc-test-fail' );
+						btn.disabled = false;
+					} );
+				} );
+			}
 
 			// Send a test Discord message.
 			var discordBtn = document.getElementById( 'gc-test-discord' );

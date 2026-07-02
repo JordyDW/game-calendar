@@ -38,7 +38,17 @@
 				list:   'List',
 			},
 			eventSources: [ {
-				url:     gcAdminCal.restUrl,
+				events: function ( fetchInfo, successCallback, failureCallback ) {
+					fetch(
+						gcAdminCal.restUrl
+							+ '?start=' + encodeURIComponent( fetchInfo.startStr )
+							+ '&end='   + encodeURIComponent( fetchInfo.endStr ),
+						{ headers: { 'X-WP-Nonce': gcAdminCal.restNonce } }
+					)
+					.then( function ( r ) { return r.json(); } )
+					.then( successCallback )
+					.catch( failureCallback );
+				},
 				failure: function () { console.warn( 'Game Calendar: failed to load events.' ); },
 			} ],
 			dateClick: function ( info ) {
@@ -49,6 +59,11 @@
 				info.jsEvent.preventDefault();
 				info.jsEvent.stopPropagation();
 				showPopover( info.event, info.el );
+			},
+			eventDidMount: function ( info ) {
+				if ( info.event.extendedProps.status === 'draft' ) {
+					info.el.classList.add( 'gc-event--draft' );
+				}
 			},
 		} );
 
@@ -530,6 +545,9 @@
 		html += '</div>';
 
 		html += '<div class="gc-pop-actions">';
+		if ( props.status === 'draft' ) {
+			html += '<button class="button button-primary button-small gc-pop-publish" data-id="' + event.id + '">Publish</button> ';
+		}
 		html += '<button class="button button-small gc-pop-edit" data-id="' + event.id + '">Edit</button> ';
 		html += '<button class="button button-small gc-pop-delete" data-id="' + event.id + '">Delete</button>';
 		html += '</div>';
@@ -571,6 +589,31 @@
 						hidePopover();
 						calendar.refetchEvents();
 					}
+				} );
+			} );
+		}
+
+		var pubBtn = popover.querySelector( '.gc-pop-publish' );
+		if ( pubBtn ) {
+			pubBtn.addEventListener( 'click', function () {
+				var btn = this;
+				btn.disabled   = true;
+				btn.textContent = 'Publishing…';
+				$.post( gcAdminCal.ajaxUrl, {
+					action:  'gc_publish_entry',
+					nonce:   gcAdminCal.nonce,
+					post_id: parseInt( btn.dataset.id, 10 ),
+				} ).done( function ( res ) {
+					if ( res.success ) {
+						hidePopover();
+						calendar.refetchEvents();
+					} else {
+						btn.disabled    = false;
+						btn.textContent = 'Publish';
+					}
+				} ).fail( function () {
+					btn.disabled    = false;
+					btn.textContent = 'Publish';
 				} );
 			} );
 		}

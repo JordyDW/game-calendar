@@ -881,3 +881,16 @@ body.gc-modal-open {
 .gc-row-updated {
 	animation: gc-row-flash 1.4s ease-out forwards;
 }
+
+/* Draft events on the admin calendar */
+
+.gc-event--draft {
+	opacity: 0.55;
+	border-style: dashed !important;
+}
+
+.gc-event--draft .fc-event-title::after {
+	content: ' (draft)';
+	font-style: italic;
+	font-size: 0.85em;
+}

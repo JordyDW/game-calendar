@@ -11,6 +11,7 @@ class GC_Admin_Calendar {
 		add_action( 'wp_ajax_gc_quick_add', array( $this, 'ajax_quick_add' ) );
 		add_action( 'wp_ajax_gc_get_entry', array( $this, 'ajax_get_entry' ) );
 		add_action( 'wp_ajax_gc_delete_entry', array( $this, 'ajax_delete_entry' ) );
+		add_action( 'wp_ajax_gc_publish_entry', array( $this, 'ajax_publish_entry' ) );
 		add_filter( 'parent_file', array( $this, 'fix_parent_file' ) );
 		add_filter( 'submenu_file', array( $this, 'fix_submenu_file' ) );
 	}
@@ -71,6 +72,7 @@ class GC_Admin_Calendar {
 
 		wp_localize_script( 'gc-admin-calendar', 'gcAdminCal', array(
 			'restUrl'   => esc_url_raw( rest_url( 'game-calendar/v1/events' ) ),
+			'restNonce' => wp_create_nonce( 'wp_rest' ),
 			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
 			'adminUrl'  => admin_url(),
 			'nonce'     => wp_create_nonce( 'gc_admin_cal' ),
@@ -406,6 +408,31 @@ class GC_Admin_Calendar {
 		wp_send_json_success();
 	}
 
+	public function ajax_publish_entry() {
+		check_ajax_referer( 'gc_admin_cal', 'nonce' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'game-calendar' ) ) );
+		}
+
+		$post_id = absint( $_POST['post_id'] ?? 0 );
+		if ( ! $post_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid entry.', 'game-calendar' ) ) );
+		}
+
+		$post = get_post( $post_id );
+		if ( ! $post || ! in_array( $post->post_type, array( 'gc_release', 'gc_event', 'gc_dlc' ), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Entry not found.', 'game-calendar' ) ) );
+		}
+
+		$result = wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ), true );
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+		}
+
+		wp_send_json_success();
+	}
+
 	public function render_entries_page() {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			return;
@@ -566,6 +593,9 @@ class GC_Admin_Calendar {
 									<div class="row-actions">
 										<span class="edit"><a href="<?php echo esc_url( $edit_link ); ?>"><?php esc_html_e( 'Edit', 'game-calendar' ); ?></a></span>
 										<span> | </span><span class="inline hide-if-no-js"><a href="#" class="gc-qe-trigger"><?php esc_html_e( 'Quick Edit', 'game-calendar' ); ?></a></span>
+										<?php if ( 'draft' === $entry->post_status ) : ?>
+											<span> | </span><span class="inline hide-if-no-js"><a href="#" class="gc-publish-trigger"><?php esc_html_e( 'Publish', 'game-calendar' ); ?></a></span>
+										<?php endif; ?>
 										<?php if ( $trash_link ) : ?>
 											<span> | </span><span class="trash"><a href="<?php echo esc_url( $trash_link ); ?>" class="submitdelete"><?php esc_html_e( 'Trash', 'game-calendar' ); ?></a></span>
 										<?php endif; ?>

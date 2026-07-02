@@ -99,6 +99,45 @@
 		} );
 	} );
 
+	// ── Publish draft ───────────────────────────────────────────────────────
+
+	$( document ).on( 'click', '.gc-publish-trigger', function ( e ) {
+		e.preventDefault();
+
+		var $link = $( this );
+		var $row  = $link.closest( 'tr' );
+		var entry;
+		try { entry = JSON.parse( $row.attr( 'data-entry' ) || '{}' ); } catch ( ex ) { entry = {}; }
+
+		$link.text( 'Publishing…' );
+
+		$.post( gcE.ajaxUrl, {
+			action:  'gc_publish_entry',
+			nonce:   gcE.nonce,
+			post_id: entry.id,
+		} ).done( function ( res ) {
+			if ( ! res.success ) {
+				$link.text( 'Publish' );
+				return;
+			}
+			// Update data attribute.
+			var updated = $.extend( {}, entry, { status: 'publish' } );
+			$row.attr( 'data-entry', JSON.stringify( updated ) );
+
+			// Swap status cell.
+			$row.find( '.column-status' ).html( '<span class="gc-status-dot gc-status-dot--published"></span>Published' );
+
+			// Remove the Publish row action — it's now published.
+			$link.closest( 'span' ).prev( 'span' ).remove(); // the " | " separator
+			$link.closest( 'span' ).remove();
+
+			$row.addClass( 'gc-row-updated' );
+			setTimeout( function () { $row.removeClass( 'gc-row-updated' ); }, 1400 );
+		} ).fail( function () {
+			$link.text( 'Publish' );
+		} );
+	} );
+
 	// Close quick edit when clicking outside.
 	$( document ).on( 'click', function ( e ) {
 		if ( ! $( e.target ).closest( '.gc-qe-row, .gc-qe-trigger' ).length ) {

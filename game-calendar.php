@@ -54,15 +54,18 @@ add_action( 'plugins_loaded', function () {
 	new GC_Calendar_Query();
 	new GC_Admin_Calendar();
 	new GC_Discord_Notifier();
+	new GC_IGDB_Importer();
 } );
 
 register_activation_hook( __FILE__, function () {
 	( new GC_Post_Types() )->register();
 	GC_Discord_Notifier::schedule_events();
+	GC_IGDB_Importer::schedule_events();
 	flush_rewrite_rules();
 } );
 
 register_deactivation_hook( __FILE__, function () {
 	GC_Discord_Notifier::clear_events();
+	GC_IGDB_Importer::clear_events();
 	flush_rewrite_rules();
 } );
