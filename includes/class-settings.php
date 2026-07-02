@@ -127,6 +127,10 @@ class GC_Settings {
 
 		$output['gc_igdb_suppress_discord'] = empty( $input['gc_igdb_suppress_discord'] ) ? 0 : 1;
 
+		$output['gc_igdb_import_limit'] = isset( $input['gc_igdb_import_limit'] )
+			? max( 10, min( 500, (int) $input['gc_igdb_import_limit'] ) )
+			: ( $existing['gc_igdb_import_limit'] ?? 50 );
+
 		// Invalidate cached IGDB token when credentials change.
 		if (
 			( $output['gc_igdb_client_id'] !== ( $existing['gc_igdb_client_id'] ?? '' ) ) ||
@@ -159,6 +163,7 @@ class GC_Settings {
 			? $options['gc_igdb_auto_import_platforms']
 			: array_keys( GC_IGDB_Importer::PLATFORM_MAP );
 		$ai_suppress    = ! empty( $options['gc_igdb_suppress_discord'] );
+		$ai_limit       = isset( $options['gc_igdb_import_limit'] ) ? (int) $options['gc_igdb_import_limit'] : 50;
 		$ai_next_run    = wp_next_scheduled( GC_IGDB_Importer::CRON_HOOK );
 		$ai_last        = get_option( 'gc_igdb_last_import', array() );
 
@@ -350,6 +355,18 @@ class GC_Settings {
 						</div>
 
 						<div class="gc-settings-row">
+							<label class="gc-settings-label" for="gc-ai-limit">
+								<?php esc_html_e( 'Import limit', 'game-calendar' ); ?>
+							</label>
+							<div class="gc-settings-control">
+								<input type="number" id="gc-ai-limit" min="10" max="500"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[gc_igdb_import_limit]"
+									value="<?php echo esc_attr( $ai_limit ); ?>" />
+								<p class="gc-settings-hint"><?php esc_html_e( 'Maximum number of games fetched per run (10–500, default 50). Higher values increase runtime and API quota usage.', 'game-calendar' ); ?></p>
+							</div>
+						</div>
+
+						<div class="gc-settings-row">
 							<label class="gc-settings-label"><?php esc_html_e( 'Platforms', 'game-calendar' ); ?></label>
 							<div class="gc-settings-control">
 								<?php foreach ( GC_IGDB_Importer::PLATFORM_MAP as $pid => $pname ) : ?>
@@ -397,11 +414,19 @@ class GC_Settings {
 										esc_html_e( 'No run scheduled — enable auto-import and save.', 'game-calendar' );
 									}
 									if ( ! empty( $ai_last['time'] ) ) {
+										$last_parts = array();
+										$last_parts[] = sprintf( _n( '%d new', '%d new', (int) ( $ai_last['imported'] ?? 0 ), 'game-calendar' ), (int) ( $ai_last['imported'] ?? 0 ) );
+										if ( ! empty( $ai_last['synced'] ) ) {
+											$last_parts[] = sprintf( _n( '%d updated', '%d updated', (int) $ai_last['synced'], 'game-calendar' ), (int) $ai_last['synced'] );
+										}
+										if ( ! empty( $ai_last['cancelled'] ) ) {
+											$last_parts[] = sprintf( _n( '%d cancelled', '%d cancelled', (int) $ai_last['cancelled'], 'game-calendar' ), (int) $ai_last['cancelled'] );
+										}
 										echo ' ' . esc_html( sprintf(
-											/* translators: 1: date/time, 2: count */
-											__( 'Last run: %1$s (%2$d new entries).', 'game-calendar' ),
+											/* translators: 1: date/time, 2: stats summary */
+											__( 'Last run: %1$s (%2$s).', 'game-calendar' ),
 											$ai_last['time'],
-											(int) ( $ai_last['imported'] ?? 0 )
+											implode( ', ', $last_parts )
 										) );
 									}
 									?>

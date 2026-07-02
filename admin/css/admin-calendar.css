@@ -938,8 +938,7 @@ body.gc-modal-open {
 	border-style: dashed !important;
 }
 
-.gc-event--draft .fc-event-title::after {
-	content: ' (draft)';
+.gc-event--draft .gc-draft-label {
 	font-style: italic;
 	font-size: 0.85em;
 }

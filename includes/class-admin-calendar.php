@@ -439,12 +439,14 @@ class GC_Admin_Calendar {
 			return;
 		}
 
-		$valid_types = array( 'gc_release', 'gc_event', 'gc_dlc' );
-		$type_filter = isset( $_GET['type'] ) ? sanitize_key( $_GET['type'] ) : '';
-		$type_filter = in_array( $type_filter, $valid_types, true ) ? $type_filter : '';
-		$search      = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
-		$orderby     = ( isset( $_GET['orderby'] ) && 'date' === $_GET['orderby'] ) ? 'date' : 'date';
-		$order       = ( isset( $_GET['order'] ) && 'asc' === strtolower( $_GET['order'] ) ) ? 'asc' : 'desc';
+		$valid_types    = array( 'gc_release', 'gc_event', 'gc_dlc' );
+		$type_filter    = isset( $_GET['type'] ) ? sanitize_key( $_GET['type'] ) : '';
+		$type_filter    = in_array( $type_filter, $valid_types, true ) ? $type_filter : '';
+		$status_filter  = ( isset( $_GET['status'] ) && 'draft' === $_GET['status'] ) ? 'draft' : '';
+		$imported_filter = ! empty( $_GET['imported'] );
+		$search         = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+		$orderby        = ( isset( $_GET['orderby'] ) && 'date' === $_GET['orderby'] ) ? 'date' : 'date';
+		$order          = ( isset( $_GET['order'] ) && 'asc' === strtolower( $_GET['order'] ) ) ? 'asc' : 'desc';
 
 		$type_labels = array(
 			'gc_release' => __( 'Release', 'game-calendar' ),
@@ -463,11 +465,17 @@ class GC_Admin_Calendar {
 		$query_args  = array(
 			'post_type'      => $query_types,
 			'posts_per_page' => 300,
-			'post_status'    => array( 'publish', 'draft' ),
+			'post_status'    => $status_filter ? array( $status_filter ) : array( 'publish', 'draft' ),
 			'no_found_rows'  => true,
 		);
 		if ( $search ) {
 			$query_args['s'] = $search;
+		}
+		if ( $imported_filter ) {
+			$query_args['meta_query'] = array( array(
+				'key'   => 'gc_auto_imported',
+				'value' => '1',
+			) );
 		}
 		$posts = get_posts( $query_args );
 
@@ -480,7 +488,10 @@ class GC_Admin_Calendar {
 		} );
 
 		$page_url    = admin_url( 'admin.php?page=gc-entries' );
-		$filter_qs   = ( $type_filter ? '&type=' . $type_filter : '' ) . ( $search ? '&s=' . urlencode( $search ) : '' );
+		$filter_qs   = ( $type_filter ? '&type=' . $type_filter : '' )
+			. ( $status_filter ? '&status=' . $status_filter : '' )
+			. ( $imported_filter ? '&imported=1' : '' )
+			. ( $search ? '&s=' . urlencode( $search ) : '' );
 
 		// Sortable column helpers.
 		$next_date_order = ( 'asc' === $order ) ? 'desc' : 'asc';
@@ -509,13 +520,23 @@ class GC_Admin_Calendar {
 						<?php esc_html_e( 'All', 'game-calendar' ); ?> <span class="count">(<?php echo absint( $total ); ?>)</span>
 					</a> |
 				</li>
-				<?php $last = end( $valid_types ); foreach ( $valid_types as $t ) : ?>
+				<?php foreach ( $valid_types as $t ) : ?>
 					<li>
 						<a href="<?php echo esc_url( $page_url . '&type=' . $t . ( $search ? '&s=' . urlencode( $search ) : '' ) . '&orderby=' . $orderby . '&order=' . $order ); ?>" <?php echo $type_filter === $t ? 'class="current" aria-current="page"' : ''; ?>>
 							<?php echo esc_html( $type_labels[ $t ] ); ?> <span class="count">(<?php echo absint( $counts[ $t ] ); ?>)</span>
-						</a><?php echo $t !== $last ? ' |' : ''; ?>
+						</a> |
 					</li>
 				<?php endforeach; ?>
+				<li>
+					<a href="<?php echo esc_url( $page_url . '&status=draft' . ( $search ? '&s=' . urlencode( $search ) : '' ) . '&orderby=' . $orderby . '&order=' . $order ); ?>" <?php echo 'draft' === $status_filter ? 'class="current" aria-current="page"' : ''; ?>>
+						<?php esc_html_e( 'Drafts', 'game-calendar' ); ?>
+					</a> |
+				</li>
+				<li>
+					<a href="<?php echo esc_url( $page_url . '&imported=1' . ( $search ? '&s=' . urlencode( $search ) : '' ) . '&orderby=' . $orderby . '&order=' . $order ); ?>" <?php echo $imported_filter ? 'class="current" aria-current="page"' : ''; ?>>
+						<?php esc_html_e( 'Auto-imported', 'game-calendar' ); ?>
+					</a>
+				</li>
 			</ul>
 
 			<table class="wp-list-table widefat fixed striped gc-entries-table">

@@ -115,10 +115,9 @@
 		$( '#gc-igdb-search-area' ).hide();
 	}
 
-	// Handle "Change" button (disconnect from IGDB).
+	// Handle "Change" button — show search without clearing the ID until a new game is chosen.
 	$( document ).on( 'click', '#gc-igdb-disconnect', function () {
-		$( '#gc_igdb_id' ).val( '' );
-		$( '#gc-igdb-connected-badge' ).hide();
+		$( '#gc-igdb-connected-badge' ).hide().empty();
 		$( '#gc-igdb-search-area' ).show();
 		searchInput.val( '' ).trigger( 'focus' );
 	} );

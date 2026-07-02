@@ -63,6 +63,15 @@
 			eventDidMount: function ( info ) {
 				if ( info.event.extendedProps.status === 'draft' ) {
 					info.el.classList.add( 'gc-event--draft' );
+					// Inject span so the label works in both month and list views
+					// (CSS ::after doesn't render on all FullCalendar elements).
+					var titleEl = info.el.querySelector( '.fc-event-title, .fc-list-event-title a' );
+					if ( titleEl ) {
+						var span = document.createElement( 'span' );
+						span.className   = 'gc-draft-label';
+						span.textContent = ' (draft)';
+						titleEl.appendChild( span );
+					}
 				}
 			},
 		} );
@@ -411,9 +420,8 @@
 		if ( searchArea ) searchArea.hidden = true;
 		if ( hint ) hint.hidden = true;
 
+		// Don't clear gc-modal-igdb-id here — only overwrite it when a new game is selected.
 		badge.querySelector( '.gc-modal-igdb-change' ).addEventListener( 'click', function () {
-			document.getElementById( 'gc-modal-igdb-id' ).value = '';
-			badge.hidden = false;
 			badge.innerHTML = '';
 			badge.hidden = true;
 			if ( searchArea ) searchArea.hidden = false;
