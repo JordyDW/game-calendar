@@ -882,6 +882,55 @@ body.gc-modal-open {
 	animation: gc-row-flash 1.4s ease-out forwards;
 }
 
+/* IGDB connection badge */
+
+.gc-igdb-connected-badge {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 10px;
+	background: #f0fdf4;
+	border: 1px solid #bbf7d0;
+	border-radius: 4px;
+	margin-bottom: 8px;
+}
+
+.gc-igdb-connected-thumb {
+	width: 36px;
+	height: 48px;
+	object-fit: cover;
+	border-radius: 3px;
+	flex-shrink: 0;
+	background: #e2e8f0;
+	display: block;
+}
+
+.gc-igdb-connected-info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex: 1;
+	min-width: 0;
+}
+
+.gc-igdb-connected-label {
+	font-weight: 600;
+	font-size: 12px;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.gc-igdb-connected-link {
+	font-size: 11px;
+	color: #2563eb;
+	text-decoration: none;
+}
+
+.gc-igdb-connected-link:hover {
+	text-decoration: underline;
+}
+
 /* Draft events on the admin calendar */
 
 .gc-event--draft {

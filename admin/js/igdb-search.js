@@ -88,14 +88,7 @@
 
 		// Cover image preview.
 		if ( game.cover ) {
-			var preview = $( '#gc_cover_url' ).next( 'img' );
-			if ( preview.length ) {
-				preview.attr( 'src', game.cover );
-			} else {
-				$( '<img style="max-height:80px;margin-top:6px;" />' )
-					.attr( 'src', game.cover )
-					.insertAfter( '#gc_cover_url' );
-			}
+			$( '#gc_cover_preview' ).attr( 'src', game.cover ).show();
 		}
 
 		// Always set the post title from IGDB.
@@ -103,7 +96,32 @@
 		if ( titleField.length ) {
 			titleField.val( game.name ).trigger( 'input' );
 		}
+
+		// Show the connection badge.
+		var thumb = game.cover
+			? '<img src="' + $( '<div>' ).text( game.cover ).html() + '" alt="" class="gc-igdb-connected-thumb" />'
+			: '<span class="gc-igdb-connected-thumb gc-igdb-no-thumb"></span>';
+		var link = game.url
+			? ' <a href="' + $( '<div>' ).text( game.url ).html() + '" target="_blank" rel="noopener" class="gc-igdb-connected-link">View on IGDB ↗</a>'
+			: '';
+		$( '#gc-igdb-connected-badge' ).html(
+			thumb +
+			'<span class="gc-igdb-connected-info">' +
+				'<span class="gc-igdb-connected-label"><span class="dashicons dashicons-yes-alt" style="color:#00a32a;"></span> Connected to IGDB</span>' +
+				link +
+			'</span>' +
+			'<button type="button" id="gc-igdb-disconnect" class="button button-small">Change</button>'
+		).show();
+		$( '#gc-igdb-search-area' ).hide();
 	}
+
+	// Handle "Change" button (disconnect from IGDB).
+	$( document ).on( 'click', '#gc-igdb-disconnect', function () {
+		$( '#gc_igdb_id' ).val( '' );
+		$( '#gc-igdb-connected-badge' ).hide();
+		$( '#gc-igdb-search-area' ).show();
+		searchInput.val( '' ).trigger( 'focus' );
+	} );
 
 	function setValue( selector, value ) {
 		var el = $( selector );

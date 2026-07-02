@@ -51,9 +51,37 @@ class GC_Meta_Boxes {
 		?>
 		<div class="gc-meta-box">
 			<div class="gc-igdb-search-wrap">
-				<label for="gc_igdb_search"><strong><?php esc_html_e( 'Search IGDB', 'game-calendar' ); ?></strong></label>
-				<input type="text" id="gc_igdb_search" placeholder="<?php esc_attr_e( 'Type a game title to search IGDB…', 'game-calendar' ); ?>" autocomplete="off" style="width:100%;margin-top:4px;" />
-				<div id="gc_igdb_results" style="display:none;"></div>
+				<?php if ( $igdb_id ) : ?>
+					<div id="gc-igdb-connected-badge" class="gc-igdb-connected-badge">
+						<?php if ( $cover_url ) : ?>
+							<img src="<?php echo esc_url( $cover_url ); ?>" alt="" class="gc-igdb-connected-thumb" />
+						<?php else : ?>
+							<span class="gc-igdb-connected-thumb gc-igdb-no-thumb"></span>
+						<?php endif; ?>
+						<span class="gc-igdb-connected-info">
+							<span class="gc-igdb-connected-label">
+								<span class="dashicons dashicons-yes-alt" style="color:#00a32a;"></span>
+								<?php esc_html_e( 'Connected to IGDB', 'game-calendar' ); ?>
+							</span>
+							<?php if ( $gc_url ) : ?>
+								<a href="<?php echo esc_url( $gc_url ); ?>" target="_blank" rel="noopener" class="gc-igdb-connected-link">
+									<?php esc_html_e( 'View on IGDB', 'game-calendar' ); ?> ↗
+								</a>
+							<?php endif; ?>
+						</span>
+						<button type="button" id="gc-igdb-disconnect" class="button button-small">
+							<?php esc_html_e( 'Change', 'game-calendar' ); ?>
+						</button>
+					</div>
+					<div id="gc-igdb-search-area" style="display:none;">
+				<?php else : ?>
+					<div id="gc-igdb-connected-badge" class="gc-igdb-connected-badge" style="display:none;"></div>
+					<div id="gc-igdb-search-area">
+				<?php endif; ?>
+						<label for="gc_igdb_search"><strong><?php esc_html_e( 'Search IGDB', 'game-calendar' ); ?></strong></label>
+						<input type="text" id="gc_igdb_search" placeholder="<?php esc_attr_e( 'Type a game title to search IGDB…', 'game-calendar' ); ?>" autocomplete="off" style="width:100%;margin-top:4px;" />
+						<div id="gc_igdb_results" style="display:none;"></div>
+					</div>
 			</div>
 			<hr />
 			<table class="form-table gc-form-table">
@@ -87,11 +115,8 @@ class GC_Meta_Boxes {
 					<th><label for="gc_url"><?php esc_html_e( 'URL', 'game-calendar' ); ?></label></th>
 					<td><input type="url" id="gc_url" name="gc_url" value="<?php echo esc_attr( $gc_url ); ?>" style="width:100%;" placeholder="https://www.igdb.com/games/…" /></td>
 				</tr>
-				<tr>
-					<th><label for="gc_igdb_id"><?php esc_html_e( 'IGDB ID', 'game-calendar' ); ?></label></th>
-					<td><input type="number" id="gc_igdb_id" name="gc_igdb_id" value="<?php echo esc_attr( $igdb_id ); ?>" /></td>
-				</tr>
 			</table>
+			<input type="hidden" id="gc_igdb_id" name="gc_igdb_id" value="<?php echo esc_attr( $igdb_id ); ?>" />
 			<input type="hidden" id="gc_igdb_platforms" name="gc_igdb_platforms" value="" />
 			<?php $this->render_discord_fields( $post ); ?>
 		</div>

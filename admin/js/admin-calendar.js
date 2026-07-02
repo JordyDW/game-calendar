@@ -165,6 +165,14 @@
 		var igdbResults = document.getElementById( 'gc-modal-igdb-results' );
 		if ( igdbResults ) { igdbResults.hidden = true; igdbResults.innerHTML = ''; }
 
+		// Reset IGDB connection badge.
+		var badge      = document.getElementById( 'gc-modal-igdb-connected-badge' );
+		var searchArea = document.getElementById( 'gc-modal-igdb-search-area' );
+		var hint       = document.getElementById( 'gc-modal-igdb-hint' );
+		if ( badge )      { badge.hidden = true; badge.innerHTML = ''; }
+		if ( searchArea ) searchArea.hidden = false;
+		if ( hint )       hint.hidden = false;
+
 		var saveBtn = document.getElementById( 'gc-modal-save' );
 		saveBtn.textContent = 'Save';
 		saveBtn.disabled    = false;
@@ -374,6 +382,45 @@
 				}, { once: true } );
 			}
 		} );
+
+		showModalIGDBBadge( { name: game.name, cover: game.cover, url: game.url } );
+	}
+
+	function showModalIGDBBadge( opts ) {
+		var badge      = document.getElementById( 'gc-modal-igdb-connected-badge' );
+		var searchArea = document.getElementById( 'gc-modal-igdb-search-area' );
+		var hint       = document.getElementById( 'gc-modal-igdb-hint' );
+		if ( ! badge ) return;
+
+		var thumb = opts.cover
+			? '<img src="' + esc( opts.cover ) + '" alt="" class="gc-igdb-connected-thumb" />'
+			: '<span class="gc-igdb-connected-thumb gc-igdb-no-thumb"></span>';
+		var link = opts.url
+			? ' <a href="' + esc( opts.url ) + '" target="_blank" rel="noopener" class="gc-igdb-connected-link">View on IGDB ↗</a>'
+			: '';
+
+		badge.innerHTML =
+			thumb +
+			'<span class="gc-igdb-connected-info">' +
+				'<span class="gc-igdb-connected-label"><span class="dashicons dashicons-yes-alt" style="color:#00a32a;"></span> Connected to IGDB</span>' +
+				link +
+			'</span>' +
+			'<button type="button" class="button button-small gc-modal-igdb-change">Change</button>';
+
+		badge.hidden = false;
+		if ( searchArea ) searchArea.hidden = true;
+		if ( hint ) hint.hidden = true;
+
+		badge.querySelector( '.gc-modal-igdb-change' ).addEventListener( 'click', function () {
+			document.getElementById( 'gc-modal-igdb-id' ).value = '';
+			badge.hidden = false;
+			badge.innerHTML = '';
+			badge.hidden = true;
+			if ( searchArea ) searchArea.hidden = false;
+			if ( hint ) hint.hidden = false;
+			document.getElementById( 'gc-modal-igdb' ).value = '';
+			document.getElementById( 'gc-modal-igdb' ).focus();
+		} );
 	}
 
 	function setVal( id, val ) {
@@ -466,6 +513,9 @@
 				if ( d.gc_cover_url ) {
 					var img = document.getElementById( 'gc-modal-cover-img' );
 					if ( img ) { img.src = d.gc_cover_url; img.style.display = ''; }
+				}
+				if ( d.gc_igdb_id ) {
+					showModalIGDBBadge( { name: d.title, cover: d.gc_cover_url, url: d.gc_url } );
 				}
 			} else {
 				var startRaw = d.gc_event_start || '';

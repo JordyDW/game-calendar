@@ -129,11 +129,12 @@ class GC_Admin_Calendar {
 
 						<div class="gc-field gc-field--release">
 							<label class="gc-label"><?php esc_html_e( 'Search IGDB', 'game-calendar' ); ?></label>
-							<div class="gc-igdb-wrap">
+							<div id="gc-modal-igdb-connected-badge" class="gc-igdb-connected-badge" hidden></div>
+							<div id="gc-modal-igdb-search-area" class="gc-igdb-wrap">
 								<input type="text" id="gc-modal-igdb" placeholder="<?php esc_attr_e( 'Type to search IGDB…', 'game-calendar' ); ?>" autocomplete="off" class="gc-input" />
 								<div id="gc-modal-igdb-results" class="gc-igdb-results" hidden></div>
 							</div>
-							<p class="gc-igdb-hint">
+							<p id="gc-modal-igdb-hint" class="gc-igdb-hint">
 								<span class="dashicons dashicons-warning"></span>
 								<?php esc_html_e( 'Selecting a result will overwrite all fields below.', 'game-calendar' ); ?>
 							</p>
