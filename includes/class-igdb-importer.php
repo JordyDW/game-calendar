@@ -67,6 +67,8 @@ class GC_IGDB_Importer {
 			$blocked[] = $igdb_id;
 			update_option( 'gc_igdb_blocked_ids', $blocked );
 		}
+
+		GC_Import_Log::record_delete( $post_id, $igdb_id, $post->post_title );
 	}
 
 	public function run() {
@@ -74,6 +76,11 @@ class GC_IGDB_Importer {
 		$sync_stats   = $this->run_date_sync();
 		update_option( 'gc_igdb_last_import', array(
 			'time'      => current_time( 'mysql' ),
+			'imported'  => $import_stats['imported'],
+			'synced'    => $sync_stats['synced'],
+			'cancelled' => $sync_stats['cancelled'],
+		) );
+		GC_Import_Log::record_run( array(
 			'imported'  => $import_stats['imported'],
 			'synced'    => $sync_stats['synced'],
 			'cancelled' => $sync_stats['cancelled'],
@@ -288,6 +295,8 @@ class GC_IGDB_Importer {
 			wp_set_object_terms( $post_id, array_values( $mapped['platforms'] ), 'gc_platform' );
 		}
 
+		GC_Import_Log::record_import( $post_id, GC_Import_Log::SRC_AUTO, $igdb_id, $mapped['title'] );
+
 		return $post_id;
 	}
 
@@ -344,6 +353,7 @@ class GC_IGDB_Importer {
 					if ( 'publish' === get_post_field( 'post_status', $post_id ) ) {
 						wp_update_post( array( 'ID' => $post_id, 'post_status' => 'draft' ) );
 						$stats['cancelled']++;
+						GC_Import_Log::record_cancel( $post_id );
 					}
 					continue;
 				}

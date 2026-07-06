@@ -12,6 +12,7 @@ class GC_Admin_Calendar {
 		add_action( 'wp_ajax_gc_get_entry', array( $this, 'ajax_get_entry' ) );
 		add_action( 'wp_ajax_gc_delete_entry', array( $this, 'ajax_delete_entry' ) );
 		add_action( 'wp_ajax_gc_publish_entry', array( $this, 'ajax_publish_entry' ) );
+		add_action( 'admin_post_gc_clear_import_log', array( $this, 'handle_clear_log' ) );
 		add_filter( 'parent_file', array( $this, 'fix_parent_file' ) );
 		add_filter( 'submenu_file', array( $this, 'fix_submenu_file' ) );
 	}
@@ -30,6 +31,7 @@ class GC_Admin_Calendar {
 		// Calendar must be first so clicking the parent menu item lands here.
 		add_submenu_page( 'game-calendar', __( 'Calendar', 'game-calendar' ),       __( 'Calendar', 'game-calendar' ),       'edit_posts',    'game-calendar',                       array( $this, 'render_page' ) );
 		add_submenu_page( 'game-calendar', __( 'All Items', 'game-calendar' ),       __( 'All Items', 'game-calendar' ),       'edit_posts',    'gc-entries',                          array( $this, 'render_entries_page' ) );
+		add_submenu_page( 'game-calendar', __( 'Logs', 'game-calendar' ),            __( 'Logs', 'game-calendar' ),            'edit_posts',    'gc-logs',                             array( $this, 'render_logs_page' ) );
 		add_submenu_page( 'game-calendar', __( 'Settings', 'game-calendar' ),        __( 'Settings', 'game-calendar' ),        'manage_options', 'gc-settings',                        array( new GC_Settings(), 'render' ) );
 	}
 
@@ -50,6 +52,11 @@ class GC_Admin_Calendar {
 	}
 
 	public function enqueue_assets( $hook ) {
+		if ( 'game-calendar_page_gc-logs' === $hook ) {
+			wp_enqueue_style( 'gc-admin-calendar', GC_PLUGIN_URL . 'admin/css/admin-calendar.css', array(), GC_VERSION );
+			return;
+		}
+
 		if ( 'game-calendar_page_gc-entries' === $hook ) {
 			wp_enqueue_style( 'gc-admin-calendar', GC_PLUGIN_URL . 'admin/css/admin-calendar.css', array(), GC_VERSION );
 			wp_enqueue_script( 'gc-entries', GC_PLUGIN_URL . 'admin/js/entries.js', array( 'jquery' ), GC_VERSION, true );
@@ -309,6 +316,18 @@ class GC_Admin_Calendar {
 
 		if ( ! empty( $_POST['gc_igdb_id'] ) ) {
 			update_post_meta( $post_id, 'gc_igdb_id', absint( $_POST['gc_igdb_id'] ) );
+		}
+
+		// Log manual additions (new entries only, not edits). IGDB-picked entries
+		// carry a gc_igdb_id; hand-typed ones don't.
+		if ( ! $editing_id ) {
+			$manual_igdb = absint( $_POST['gc_igdb_id'] ?? 0 );
+			GC_Import_Log::record_import(
+				$post_id,
+				$manual_igdb ? GC_Import_Log::SRC_IGDB : GC_Import_Log::SRC_MANUAL,
+				$manual_igdb,
+				$title
+			);
 		}
 		if ( ! empty( $_POST['gc_parent_game'] ) ) {
 			update_post_meta( $post_id, 'gc_parent_game', absint( $_POST['gc_parent_game'] ) );
@@ -637,6 +656,248 @@ class GC_Admin_Calendar {
 					<?php endif; ?>
 				</tbody>
 			</table>
+		</div>
+		<?php
+	}
+
+	public function handle_clear_log() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Unauthorized.', 'game-calendar' ) );
+		}
+		check_admin_referer( 'gc_clear_import_log' );
+		GC_Import_Log::clear();
+		wp_safe_redirect( add_query_arg(
+			array( 'page' => 'gc-logs', 'cleared' => '1' ),
+			admin_url( 'admin.php' )
+		) );
+		exit;
+	}
+
+	public function render_logs_page() {
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			return;
+		}
+
+		// Seed the log from existing entries the first time it is opened.
+		GC_Import_Log::maybe_backfill();
+
+		$log   = GC_Import_Log::all();
+		$stats = GC_Import_Log::stats();
+
+		$valid_filters = array( 'all', 'auto', 'manual', 'activity' );
+		$filter        = isset( $_GET['filter'] ) ? sanitize_key( $_GET['filter'] ) : 'all';
+		if ( ! in_array( $filter, $valid_filters, true ) ) {
+			$filter = 'all';
+		}
+
+		$is_import   = function ( $e ) { return GC_Import_Log::EV_IMPORT === $e['ev']; };
+		$is_auto     = function ( $e ) use ( $is_import ) { return $is_import( $e ) && GC_Import_Log::SRC_AUTO === $e['src']; };
+		$is_manual   = function ( $e ) use ( $is_import ) { return $is_import( $e ) && GC_Import_Log::SRC_AUTO !== $e['src']; };
+		$is_activity = function ( $e ) { return in_array( $e['ev'], array( GC_Import_Log::EV_RUN, GC_Import_Log::EV_CANCEL, GC_Import_Log::EV_DELETE ), true ); };
+
+		$counts = array(
+			'all'      => count( $log ),
+			'auto'     => count( array_filter( $log, $is_auto ) ),
+			'manual'   => count( array_filter( $log, $is_manual ) ),
+			'activity' => count( array_filter( $log, $is_activity ) ),
+		);
+
+		switch ( $filter ) {
+			case 'auto':
+				$rows = array_filter( $log, $is_auto );
+				break;
+			case 'manual':
+				$rows = array_filter( $log, $is_manual );
+				break;
+			case 'activity':
+				$rows = array_filter( $log, $is_activity );
+				break;
+			default:
+				$rows = $log;
+		}
+		$rows = array_values( $rows );
+
+		$date_fmt = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+
+		$event_labels = array(
+			GC_Import_Log::EV_IMPORT => __( 'Imported', 'game-calendar' ),
+			GC_Import_Log::EV_RUN    => __( 'Auto-run', 'game-calendar' ),
+			GC_Import_Log::EV_CANCEL => __( 'Cancelled', 'game-calendar' ),
+			GC_Import_Log::EV_DELETE => __( 'Deleted', 'game-calendar' ),
+		);
+		$event_mod = array(
+			GC_Import_Log::EV_IMPORT => 'import',
+			GC_Import_Log::EV_RUN    => 'run',
+			GC_Import_Log::EV_CANCEL => 'cancel',
+			GC_Import_Log::EV_DELETE => 'delete',
+		);
+		$source_labels = array(
+			GC_Import_Log::SRC_AUTO   => __( 'Automatic', 'game-calendar' ),
+			GC_Import_Log::SRC_IGDB   => __( 'Manual · IGDB', 'game-calendar' ),
+			GC_Import_Log::SRC_MANUAL => __( 'Manual', 'game-calendar' ),
+		);
+
+		$page_url = admin_url( 'admin.php?page=gc-logs' );
+
+		$filter_tabs = array(
+			'all'      => __( 'All', 'game-calendar' ),
+			'auto'     => __( 'Automatic', 'game-calendar' ),
+			'manual'   => __( 'Manual', 'game-calendar' ),
+			'activity' => __( 'Activity', 'game-calendar' ),
+		);
+		?>
+		<div class="gc-admin-page">
+			<div class="gc-toolbar">
+				<div class="gc-toolbar-left">
+					<span class="dashicons dashicons-list-view gc-toolbar-icon"></span>
+					<h1 class="gc-toolbar-title"><?php esc_html_e( 'Import Logs', 'game-calendar' ); ?></h1>
+				</div>
+				<?php if ( current_user_can( 'manage_options' ) && ! empty( $log ) ) : ?>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"
+						onsubmit="return confirm( '<?php echo esc_js( __( 'Clear the entire import log? Calendar entries are not affected.', 'game-calendar' ) ); ?>' );">
+						<input type="hidden" name="action" value="gc_clear_import_log" />
+						<?php wp_nonce_field( 'gc_clear_import_log' ); ?>
+						<button type="submit" class="button button-secondary"><?php esc_html_e( 'Clear Log', 'game-calendar' ); ?></button>
+					</form>
+				<?php endif; ?>
+			</div>
+
+			<div class="gc-logs-wrap">
+
+				<?php if ( ! empty( $_GET['cleared'] ) ) : ?>
+					<div class="notice notice-success is-dismissible gc-logs-notice"><p><?php esc_html_e( 'Import log cleared.', 'game-calendar' ); ?></p></div>
+				<?php endif; ?>
+
+				<div class="gc-log-stats">
+					<div class="gc-log-stat">
+						<span class="gc-log-stat-value"><?php echo esc_html( number_format_i18n( $stats['total'] ) ); ?></span>
+						<span class="gc-log-stat-label"><?php esc_html_e( 'Total imported', 'game-calendar' ); ?></span>
+					</div>
+					<div class="gc-log-stat">
+						<span class="gc-log-stat-value"><?php echo esc_html( number_format_i18n( $stats['auto'] ) ); ?></span>
+						<span class="gc-log-stat-label"><?php esc_html_e( 'Automatic', 'game-calendar' ); ?></span>
+					</div>
+					<div class="gc-log-stat">
+						<span class="gc-log-stat-value"><?php echo esc_html( number_format_i18n( $stats['manual'] ) ); ?></span>
+						<span class="gc-log-stat-label"><?php esc_html_e( 'Manual', 'game-calendar' ); ?></span>
+					</div>
+					<div class="gc-log-stat">
+						<span class="gc-log-stat-value">
+							<?php echo $stats['last_run_time'] ? esc_html( wp_date( $date_fmt, $stats['last_run_time'] ) ) : '—'; ?>
+						</span>
+						<span class="gc-log-stat-label">
+							<?php
+							echo esc_html( $stats['last_run_msg']
+								? sprintf( __( 'Last auto-run · %s', 'game-calendar' ), $stats['last_run_msg'] )
+								: __( 'Last auto-run', 'game-calendar' ) );
+							?>
+						</span>
+					</div>
+				</div>
+
+				<ul class="subsubsub">
+					<?php $i = 0; foreach ( $filter_tabs as $key => $label ) : $i++; ?>
+						<li>
+							<a href="<?php echo esc_url( add_query_arg( 'filter', $key, $page_url ) ); ?>"
+								<?php echo $filter === $key ? 'class="current" aria-current="page"' : ''; ?>>
+								<?php echo esc_html( $label ); ?>
+								<span class="count">(<?php echo absint( $counts[ $key ] ); ?>)</span>
+							</a><?php echo $i < count( $filter_tabs ) ? ' |' : ''; ?>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+
+				<table class="wp-list-table widefat fixed striped gc-logs-table">
+					<thead>
+						<tr>
+							<th scope="col" class="manage-column column-time"><?php esc_html_e( 'When', 'game-calendar' ); ?></th>
+							<th scope="col" class="manage-column column-event"><?php esc_html_e( 'Event', 'game-calendar' ); ?></th>
+							<th scope="col" class="manage-column column-item column-primary"><?php esc_html_e( 'Item', 'game-calendar' ); ?></th>
+							<th scope="col" class="manage-column column-source"><?php esc_html_e( 'Source', 'game-calendar' ); ?></th>
+							<th scope="col" class="manage-column column-details"><?php esc_html_e( 'Details', 'game-calendar' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php if ( empty( $rows ) ) : ?>
+							<tr><td colspan="5"><?php esc_html_e( 'No log entries yet.', 'game-calendar' ); ?></td></tr>
+						<?php else : ?>
+							<?php foreach ( $rows as $e ) :
+								$ev        = $e['ev'];
+								$pid       = (int) $e['pid'];
+								$edit_link = $pid ? get_edit_post_link( $pid ) : '';
+								$status    = $pid ? get_post_status( $pid ) : false;
+								$title     = $e['ttl'] ?: __( '(no title)', 'game-calendar' );
+								$igdb_url  = $e['igdb'] ? 'https://www.igdb.com/games?id=' . (int) $e['igdb'] : '';
+							?>
+							<tr>
+								<td class="column-time"><?php echo esc_html( wp_date( $date_fmt, (int) $e['t'] ) ); ?></td>
+								<td class="column-event">
+									<span class="gc-log-badge gc-log-badge--<?php echo esc_attr( $event_mod[ $ev ] ?? 'import' ); ?>">
+										<?php echo esc_html( $event_labels[ $ev ] ?? $ev ); ?>
+									</span>
+								</td>
+								<td class="column-item column-primary">
+									<?php if ( GC_Import_Log::EV_RUN === $ev ) : ?>
+										<span class="gc-log-muted">—</span>
+									<?php elseif ( $edit_link && 'trash' !== $status ) : ?>
+										<a href="<?php echo esc_url( $edit_link ); ?>"><strong><?php echo esc_html( $title ); ?></strong></a>
+									<?php else : ?>
+										<strong><?php echo esc_html( $title ); ?></strong>
+									<?php endif; ?>
+									<?php if ( $igdb_url ) : ?>
+										<a class="gc-log-igdb" href="<?php echo esc_url( $igdb_url ); ?>" target="_blank" rel="noopener" title="<?php esc_attr_e( 'View on IGDB', 'game-calendar' ); ?>">
+											<span class="dashicons dashicons-external"></span>
+										</a>
+									<?php endif; ?>
+								</td>
+								<td class="column-source">
+									<?php if ( isset( $source_labels[ $e['src'] ] ) ) : ?>
+										<span class="gc-log-src gc-log-src--<?php echo esc_attr( $e['src'] ); ?>"><?php echo esc_html( $source_labels[ $e['src'] ] ); ?></span>
+									<?php else : ?>
+										<span class="gc-log-muted">—</span>
+									<?php endif; ?>
+								</td>
+								<td class="column-details">
+									<?php
+									$parts = array();
+									if ( '' !== $e['msg'] ) {
+										$parts[] = esc_html( $e['msg'] );
+									}
+									if ( GC_Import_Log::EV_IMPORT === $ev ) {
+										$state_labels = array(
+											'publish' => __( 'published', 'game-calendar' ),
+											'draft'   => __( 'draft', 'game-calendar' ),
+											'trash'   => __( 'trashed', 'game-calendar' ),
+										);
+										if ( false === $status ) {
+											$state = __( 'removed', 'game-calendar' );
+										} else {
+											$state = $state_labels[ $status ] ?? $status;
+										}
+										$parts[] = '<span class="gc-log-muted">' . esc_html( $state ) . '</span>';
+									}
+									echo $parts
+										? implode( ' <span class="gc-log-muted">·</span> ', $parts )
+										: '<span class="gc-log-muted">—</span>';
+									?>
+								</td>
+							</tr>
+							<?php endforeach; ?>
+						<?php endif; ?>
+					</tbody>
+				</table>
+
+				<p class="gc-log-foot">
+					<?php
+					echo esc_html( sprintf(
+						/* translators: %d: maximum number of retained log entries */
+						__( 'The log keeps the most recent %d events.', 'game-calendar' ),
+						GC_Import_Log::MAX_ENTRIES
+					) );
+					?>
+				</p>
+
+			</div>
 		</div>
 		<?php
 	}

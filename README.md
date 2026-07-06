@@ -19,6 +19,7 @@ Built for [Gamekast](https://gamekast.be).
 - **Click-to-detail modal** — click any event to see full details; visit page button if a URL is set
 - **Type filters** — toggle game releases and gaming events independently
 - **Discord notifications** — push releases, events and DLC to a Discord channel via webhook, with instant, daily, countdown and weekly-digest triggers, rich embeds, optional `@everyone`/role pings, and per-entry overrides
+- **Import logs** — a **Logs** page recording everything that entered the calendar, automatically (scheduled IGDB import) or manually (quick-add), plus auto-import runs, cancellations and deletions; filter by source and jump to any entry
 - **Auto-updates** — updates delivered via GitHub Releases, installable from the WP admin
 
 ---
@@ -209,6 +210,8 @@ game-calendar/
 │   ├── class-admin-calendar.php   # Admin calendar page + AJAX
 │   ├── class-settings.php         # Settings page
 │   ├── class-discord-notifier.php # Discord webhook notifications + cron
+│   ├── class-igdb-importer.php    # Scheduled IGDB auto-import + date sync
+│   ├── class-import-log.php       # Import/activity log store + backfill
 │   └── lib/
 │       └── plugin-update-checker/ # Auto-updater library
 ├── admin/

@@ -1124,3 +1124,103 @@ body.gc-modal-open {
 	font-style: italic;
 	font-size: 0.85em;
 }
+
+/* ── Import Logs page ─────────────────────────────────────────────────────── */
+
+.gc-logs-wrap {
+	padding: 20px 24px 0;
+}
+
+.gc-logs-notice {
+	margin: 0 0 16px;
+}
+
+.gc-log-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 14px;
+	margin-bottom: 20px;
+}
+
+.gc-log-stat {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 14px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.gc-log-stat-value {
+	font-size: 22px;
+	font-weight: 700;
+	color: #1d2327;
+	line-height: 1.2;
+}
+
+.gc-log-stat-label {
+	font-size: 12px;
+	color: #646970;
+}
+
+.gc-logs-table {
+	background: #fff;
+}
+
+.gc-logs-table .column-time   { width: 160px; }
+.gc-logs-table .column-event  { width: 110px; }
+.gc-logs-table .column-source { width: 130px; }
+.gc-logs-table .column-details { width: 30%; }
+
+.gc-log-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	white-space: nowrap;
+}
+
+.gc-log-badge--import { background: #e6f4ea; color: #137333; }
+.gc-log-badge--run    { background: #e8f0fe; color: #1967d2; }
+.gc-log-badge--cancel { background: #fef7e0; color: #b06000; }
+.gc-log-badge--delete { background: #fce8e6; color: #c5221f; }
+
+.gc-log-src {
+	display: inline-block;
+	font-size: 12px;
+	font-weight: 500;
+	color: #3c434a;
+}
+
+.gc-log-src--auto   { color: #1967d2; }
+.gc-log-src--igdb   { color: #6d28d9; }
+.gc-log-src--manual { color: #3c434a; }
+
+.gc-log-igdb {
+	text-decoration: none;
+	vertical-align: middle;
+	margin-left: 4px;
+	color: #787c82;
+}
+
+.gc-log-igdb:hover { color: #2271b1; }
+
+.gc-log-igdb .dashicons {
+	font-size: 15px;
+	width: 15px;
+	height: 15px;
+}
+
+.gc-log-muted {
+	color: #787c82;
+}
+
+.gc-log-foot {
+	margin: 12px 0 0;
+	font-size: 12px;
+	color: #787c82;
+}
