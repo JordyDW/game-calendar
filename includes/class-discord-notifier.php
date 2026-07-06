@@ -46,8 +46,11 @@ class GC_Discord_Notifier {
 	}
 
 	public function maybe_schedule() {
-		if ( ! wp_next_scheduled( self::CRON_DAILY ) || ! wp_next_scheduled( self::CRON_WEEKLY ) ) {
-			self::schedule_events();
+		if ( ! wp_next_scheduled( self::CRON_DAILY ) ) {
+			self::schedule_daily();
+		}
+		if ( ! wp_next_scheduled( self::CRON_WEEKLY ) ) {
+			self::schedule_weekly();
 		}
 	}
 
@@ -57,17 +60,37 @@ class GC_Discord_Notifier {
 
 	/**
 	 * (Re)schedule the daily and weekly cron events to the configured times.
-	 * Safe to call repeatedly — clears existing events first.
+	 * Safe to call repeatedly — each helper clears its own hook first.
+	 *
+	 * These are one-off (single) events rather than WP-Cron recurring events: each
+	 * run re-arms the next one (see run_daily()/run_weekly()). Recomputing the next
+	 * fire time every run — instead of repeating a fixed 1-day/1-week interval —
+	 * keeps the local wall-clock time correct across daylight-saving transitions,
+	 * which a fixed interval would drift by an hour.
 	 */
 	public static function schedule_events() {
-		self::clear_events();
+		self::schedule_daily();
+		self::schedule_weekly();
+	}
 
+	/**
+	 * Arm the next single daily run at the configured time, replacing any pending one.
+	 */
+	private static function schedule_daily() {
+		wp_clear_scheduled_hook( self::CRON_DAILY );
 		$daily_time = GC_Settings::get( 'gc_discord_daily_time', '09:00' );
-		wp_schedule_event( self::next_run( $daily_time ), 'daily', self::CRON_DAILY );
+		wp_schedule_single_event( self::next_run( $daily_time ), self::CRON_DAILY );
+	}
 
+	/**
+	 * Arm the next single weekly run at the configured weekday + time, replacing any
+	 * pending one.
+	 */
+	private static function schedule_weekly() {
+		wp_clear_scheduled_hook( self::CRON_WEEKLY );
 		$weekly_day  = (int) GC_Settings::get( 'gc_discord_weekly_day', '1' ); // 0 = Sunday.
 		$weekly_time = GC_Settings::get( 'gc_discord_weekly_time', '09:00' );
-		wp_schedule_event( self::next_run( $weekly_time, $weekly_day ), 'weekly', self::CRON_WEEKLY );
+		wp_schedule_single_event( self::next_run( $weekly_time, $weekly_day ), self::CRON_WEEKLY );
 	}
 
 	public static function clear_events() {
@@ -83,35 +106,33 @@ class GC_Discord_Notifier {
 	 * @return int UTC timestamp.
 	 */
 	private static function next_run( $time, $weekday = null ) {
-		$offset = (float) get_option( 'gmt_offset', 0 );
-		$now    = time();
+		// Use the site's real timezone (wp_timezone) rather than the raw gmt_offset
+		// option: on a site configured with a named timezone, gmt_offset holds the
+		// standard-time offset and is not adjusted for DST, so scheduling off it
+		// fires an hour late in summer. A DateTime in wp_timezone() is DST-aware.
+		$tz  = wp_timezone();
+		$now = new DateTime( 'now', $tz );
 
 		$parts   = explode( ':', $time );
 		$hours   = isset( $parts[0] ) ? (int) $parts[0] : 9;
 		$minutes = isset( $parts[1] ) ? (int) $parts[1] : 0;
 
-		// "Now" in the site's local timezone.
-		$local_now = $now + (int) ( $offset * HOUR_IN_SECONDS );
-
-		// Midnight (local) of today, expressed as a UTC timestamp for the local day start.
-		$local_midnight = $local_now - ( $local_now % DAY_IN_SECONDS );
-		$target_local   = $local_midnight + ( $hours * HOUR_IN_SECONDS ) + ( $minutes * MINUTE_IN_SECONDS );
+		$target = ( clone $now )->setTime( $hours, $minutes, 0 );
 
 		if ( null !== $weekday ) {
-			$current_dow = (int) gmdate( 'w', $local_now );
+			$current_dow = (int) $now->format( 'w' ); // 0 = Sunday.
 			$delta       = ( $weekday - $current_dow + 7 ) % 7;
-			$target_local += $delta * DAY_IN_SECONDS;
+			if ( $delta > 0 ) {
+				$target->modify( "+{$delta} days" );
+			}
 		}
-
-		// Convert the chosen local moment back to UTC.
-		$target_utc = $target_local - (int) ( $offset * HOUR_IN_SECONDS );
 
 		// If that moment already passed, roll forward (a day for daily, a week for weekly).
-		if ( $target_utc <= $now ) {
-			$target_utc += ( null !== $weekday ) ? WEEK_IN_SECONDS : DAY_IN_SECONDS;
+		if ( $target <= $now ) {
+			$target->modify( ( null !== $weekday ) ? '+1 week' : '+1 day' );
 		}
 
-		return $target_utc;
+		return $target->getTimestamp();
 	}
 
 	/* ---------------------------------------------------------------------
@@ -175,6 +196,11 @@ class GC_Discord_Notifier {
 	 * ------------------------------------------------------------------- */
 
 	public function run_daily() {
+		// Re-arm tomorrow's run first: keeps the chain alive even if the work below
+		// fatals, and recomputes the fire time so it stays correct across DST. Armed
+		// regardless of the toggles so re-enabling a trigger doesn't need a re-save.
+		self::schedule_daily();
+
 		if ( GC_Settings::get( 'gc_discord_enable_daily' ) ) {
 			$this->run_dated_batch( 0, 'today', 'gc_discord_sent_today', '🎮 ' . __( 'Releasing today', 'game-calendar' ) );
 		}
@@ -227,6 +253,10 @@ class GC_Discord_Notifier {
 	 * ------------------------------------------------------------------- */
 
 	public function run_weekly() {
+		// Re-arm next week's run first (see run_daily) — keeps the chain alive and
+		// the fire time DST-correct, independent of the toggle below.
+		self::schedule_weekly();
+
 		if ( ! GC_Settings::get( 'gc_discord_enable_weekly' ) ) {
 			return;
 		}
