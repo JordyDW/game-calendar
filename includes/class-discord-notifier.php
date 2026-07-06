@@ -386,12 +386,12 @@ class GC_Discord_Notifier {
 
 		$fields = array(
 			'type'        => $post_type,
-			'title'       => get_the_title( $post_id ),
+			'title'       => $this->decode( get_the_title( $post_id ) ),
 			'description' => $this->excerpt( $post_id ),
 			'date'        => $date,
 			'url'         => $url,
 			'cover'       => $cover,
-			'address'     => $is_event ? get_post_meta( $post_id, 'gc_event_address', true ) : '',
+			'address'     => $is_event ? $this->decode( get_post_meta( $post_id, 'gc_event_address', true ) ) : '',
 			'developer'   => '',
 			'publisher'   => '',
 			'genre'       => '',
@@ -399,14 +399,23 @@ class GC_Discord_Notifier {
 		);
 
 		if ( in_array( $post_type, array( 'gc_release', 'gc_dlc' ), true ) ) {
-			$fields['developer'] = get_post_meta( $post_id, 'gc_developer', true );
-			$fields['publisher'] = get_post_meta( $post_id, 'gc_publisher', true );
-			$fields['genre']     = get_post_meta( $post_id, 'gc_genre', true );
+			$fields['developer'] = $this->decode( get_post_meta( $post_id, 'gc_developer', true ) );
+			$fields['publisher'] = $this->decode( get_post_meta( $post_id, 'gc_publisher', true ) );
+			$fields['genre']     = $this->decode( get_post_meta( $post_id, 'gc_genre', true ) );
 			$platforms           = wp_get_post_terms( $post_id, 'gc_platform', array( 'fields' => 'names' ) );
-			$fields['platforms'] = is_wp_error( $platforms ) ? array() : $platforms;
+			$fields['platforms'] = is_wp_error( $platforms ) ? array() : array_map( array( $this, 'decode' ), $platforms );
 		}
 
 		return $fields;
+	}
+
+	/**
+	 * Discord embeds are plain text/JSON, so HTML entities WordPress stores in
+	 * titles and meta (e.g. a curly apostrophe as &#8217;) would render
+	 * literally. Decode them to their real characters before they hit the payload.
+	 */
+	private function decode( $text ) {
+		return html_entity_decode( (string) $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 	}
 
 	private function excerpt( $post_id ) {
@@ -415,6 +424,7 @@ class GC_Discord_Notifier {
 			return '';
 		}
 		$text = wp_strip_all_tags( strip_shortcodes( $post->post_content ) );
+		$text = $this->decode( $text );
 		$text = trim( preg_replace( '/\s+/', ' ', $text ) );
 		return wp_html_excerpt( $text, 350, '…' );
 	}
