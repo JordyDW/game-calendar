@@ -77,10 +77,10 @@ Go to **Game Calendar → Settings → Discord Notifications**:
 
 | Trigger | When it fires |
 | --- | --- |
-| **Instant** | The first time a release/event/DLC is published |
-| **Daily** | Each morning, lists everything releasing that day |
-| **Countdown** | A reminder a set number of days before a release |
-| **Weekly digest** | Once a week, recaps the coming 7 days |
+| **Instant** | Immediately, the first time a release/event/DLC is published |
+| **Daily** | Every day at the configured **daily time** (default **09:00** site time), lists everything releasing that day |
+| **Countdown** | Same daily run as above (default **09:00** site time), a reminder a set number of days before a release |
+| **Weekly digest** | Once a week on the configured **weekday** (default **Monday**) at the configured **weekly time** (default **09:00** site time), recaps the coming 7 days |
 
 Each toggles independently. **Entry types** (game releases, gaming events, DLC) control what's eligible across all triggers.
 
