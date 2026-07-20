@@ -1,5 +1,12 @@
 # Game Calendar
 
+[![Latest release](https://img.shields.io/github/v/release/JordyDW/game-calendar?style=flat-square)](https://github.com/JordyDW/game-calendar/releases/latest)
+[![License](https://img.shields.io/github/license/JordyDW/game-calendar?style=flat-square)](LICENSE)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4?style=flat-square&logo=php&logoColor=white)
+![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-21759B?style=flat-square&logo=wordpress&logoColor=white)
+![Last commit](https://img.shields.io/github/last-commit/JordyDW/game-calendar?style=flat-square)
+![Downloads](https://img.shields.io/github/downloads/JordyDW/game-calendar/total?style=flat-square)
+
 A WordPress plugin for gaming sites. Track game releases and gaming events on an interactive calendar, with IGDB integration to auto-fill game metadata.
 
 Built for [Gamekast](https://gamekast.be).
