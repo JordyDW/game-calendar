@@ -154,7 +154,10 @@ class GC_Admin_Calendar {
 
 						<div class="gc-field gc-field--release">
 							<label class="gc-label" for="gc-modal-date"><?php esc_html_e( 'Release Date', 'game-calendar' ); ?></label>
-							<input type="date" id="gc-modal-date" class="gc-input" />
+							<div class="gc-date-precision">
+								<input type="date" id="gc-modal-date" class="gc-input" />
+								<?php GC_Release_Date::render_select( 'gc-modal-precision', '', 'day', 'gc-input' ); ?>
+							</div>
 						</div>
 
 						<div class="gc-field gc-field--event">
@@ -302,7 +305,15 @@ class GC_Admin_Calendar {
 			}
 		}
 
-		$text_fields = array( 'gc_release_date', 'gc_event_start', 'gc_event_end', 'gc_event_url', 'gc_event_address', 'gc_developer', 'gc_publisher', 'gc_genre' );
+		if ( isset( $_POST['gc_release_date'] ) && '' !== $_POST['gc_release_date'] ) {
+			GC_Release_Date::save(
+				$post_id,
+				wp_unslash( $_POST['gc_release_date'] ),
+				isset( $_POST['gc_release_precision'] ) ? sanitize_key( $_POST['gc_release_precision'] ) : null
+			);
+		}
+
+		$text_fields = array( 'gc_event_start', 'gc_event_end', 'gc_event_url', 'gc_event_address', 'gc_developer', 'gc_publisher', 'gc_genre' );
 		foreach ( $text_fields as $field ) {
 			if ( isset( $_POST[ $field ] ) && '' !== $_POST[ $field ] ) {
 				update_post_meta( $post_id, $field, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
@@ -389,6 +400,7 @@ class GC_Admin_Calendar {
 
 		if ( 'gc_release' === $post->post_type ) {
 			$data['gc_release_date'] = get_post_meta( $post_id, 'gc_release_date', true );
+			$data['gc_release_precision'] = GC_Release_Date::get_precision( $post_id );
 			$data['gc_developer']    = get_post_meta( $post_id, 'gc_developer', true );
 			$data['gc_publisher']    = get_post_meta( $post_id, 'gc_publisher', true );
 			$data['gc_genre']        = get_post_meta( $post_id, 'gc_genre', true );
@@ -643,7 +655,12 @@ class GC_Admin_Calendar {
 										<?php endif; ?>
 									</div>
 								</td>
-								<td class="column-date"><?php echo esc_html( $date_val ?: '—' ); ?></td>
+								<td class="column-date">
+									<?php echo esc_html( $date_val ?: '—' ); ?>
+									<?php if ( $date_val && GC_Release_Date::is_vague( $entry->ID ) ) : ?>
+										<br><small class="gc-window-label"><?php echo esc_html( GC_Release_Date::post_label( $entry->ID ) ); ?></small>
+									<?php endif; ?>
+								</td>
 								<td class="column-status">
 									<?php if ( 'publish' === $entry->post_status ) : ?>
 										<span class="gc-status-dot gc-status-dot--published"></span><?php esc_html_e( 'Published', 'game-calendar' ); ?>

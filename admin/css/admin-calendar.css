@@ -1224,3 +1224,17 @@ body.gc-modal-open {
 	font-size: 12px;
 	color: #787c82;
 }
+
+/* Release date + precision ("Exact day" / "Quarter only" …) side by side */
+.gc-date-precision {
+	display: flex;
+	gap: 8px;
+}
+.gc-date-precision .gc-input {
+	flex: 1 1 0;
+	min-width: 0;
+}
+.gc-window-label {
+	opacity: 0.75;
+	font-style: italic;
+}

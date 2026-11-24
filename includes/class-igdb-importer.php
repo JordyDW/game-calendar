@@ -7,6 +7,13 @@ class GC_IGDB_Importer {
 
 	const CRON_HOOK = 'gc_igdb_auto_import';
 
+	// One-off re-sync of all release dates (scheduled after an update that
+	// changes how dates are read from IGDB).
+	const RESYNC_HOOK = 'gc_igdb_resync_dates';
+
+	// Bump when stored release dates need a fresh sync from IGDB.
+	const DATES_VERSION = 2;
+
 	const PLATFORM_MAP = array(
 		6   => 'PC',
 		167 => 'PS5',
@@ -26,6 +33,33 @@ class GC_IGDB_Importer {
 		add_action( 'add_option_' . GC_Settings::OPTION_NAME, array( $this, 'reschedule' ) );
 		add_action( 'wp_ajax_gc_igdb_run_import', array( $this, 'ajax_run_import' ) );
 		add_action( 'before_delete_post', array( $this, 'on_before_delete_post' ) );
+		add_action( self::RESYNC_HOOK, array( $this, 'run_resync' ) );
+		add_action( 'init', array( $this, 'maybe_schedule_resync' ) );
+	}
+
+	/**
+	 * Releases imported before version 2 read IGDB's deprecated
+	 * release_dates.category, which IGDB stopped sending: every release window
+	 * ("Q2 2027", "2027") was stored as an exact date on the last day of that
+	 * window. Re-sync all dates once, shortly after updating.
+	 */
+	public function maybe_schedule_resync() {
+		if ( (int) get_option( 'gc_igdb_dates_version', 1 ) >= self::DATES_VERSION ) {
+			return;
+		}
+		update_option( 'gc_igdb_dates_version', self::DATES_VERSION );
+		if ( ! wp_next_scheduled( self::RESYNC_HOOK ) ) {
+			wp_schedule_single_event( time() + 30, self::RESYNC_HOOK );
+		}
+	}
+
+	public function run_resync() {
+		$stats = $this->run_date_sync();
+		GC_Import_Log::record_run( array(
+			'imported'  => 0,
+			'synced'    => $stats['synced'],
+			'cancelled' => $stats['cancelled'],
+		) );
 	}
 
 	public static function schedule_events() {
@@ -109,7 +143,7 @@ class GC_IGDB_Importer {
 		$body = 'fields id,name,url,cover.url,first_release_date,genres.name,'
 			. 'involved_companies.company.name,involved_companies.developer,'
 			. 'involved_companies.publisher,platforms.id,platforms.name,hypes,follows,'
-			. 'release_dates.date,release_dates.category,release_dates.y,release_dates.m,release_dates.platform; '
+			. GC_Release_Date::IGDB_FIELDS . '; '
 			. 'where ' . $where . '; '
 			. 'sort hypes desc; limit ' . $limit . ';';
 
@@ -151,48 +185,6 @@ class GC_IGDB_Importer {
 		return $q->posts[0] ?? null;
 	}
 
-	// IGDB release_dates categories: 0=YYYYMMDD, 1=YYYYMMMM, 2=YYYYQ1, 3=YYYYQ2,
-	// 4=YYYYQ3, 5=YYYYQ4, 6=YYYY, 7=TBD.
-	// Returns null when the date is too vague to place on a calendar (year/TBD only).
-	// Returns a Y-m-d string for exact or month-precision dates.
-	private static function resolve_release_date( $game ) {
-		$ts      = (int) ( $game['first_release_date'] ?? 0 );
-		$rd_list = $game['release_dates'] ?? array();
-		$best_cat = -1;
-		$best_y   = 0;
-		$best_m   = 0;
-		$best_ts  = $ts;
-
-		foreach ( $rd_list as $rd ) {
-			$cat = isset( $rd['category'] ) ? (int) $rd['category'] : -1;
-			if ( $cat < 0 ) continue;
-			// Lower number = more precise (0 is exact day, 6 is year-only, 7 is TBD).
-			if ( $best_cat < 0 || $cat < $best_cat ) {
-				$best_cat = $cat;
-				$best_y   = (int) ( $rd['y'] ?? 0 );
-				$best_m   = (int) ( $rd['m'] ?? 0 );
-				$best_ts  = isset( $rd['date'] ) ? (int) $rd['date'] : $ts;
-			}
-		}
-
-		// Exact day known (categories 0, or no release_dates array at all).
-		if ( $best_cat <= 0 && $best_ts ) {
-			return gmdate( 'Y-m-d', $best_ts );
-		}
-		// Month precision — place on the first of that month.
-		if ( 1 === $best_cat && $best_y && $best_m ) {
-			return sprintf( '%04d-%02d-01', $best_y, $best_m );
-		}
-		// Quarter precision — place on the first day of that quarter.
-		if ( 2 === $best_cat && $best_y ) return sprintf( '%04d-01-01', $best_y ); // Q1
-		if ( 3 === $best_cat && $best_y ) return sprintf( '%04d-04-01', $best_y ); // Q2
-		if ( 4 === $best_cat && $best_y ) return sprintf( '%04d-07-01', $best_y ); // Q3
-		if ( 5 === $best_cat && $best_y ) return sprintf( '%04d-10-01', $best_y ); // Q4
-
-		// Year-only (6) or TBD (7): too vague — skip this game.
-		return null;
-	}
-
 	private function map_game( $game ) {
 		$developer = '';
 		$publisher = '';
@@ -212,10 +204,9 @@ class GC_IGDB_Importer {
 			$cover = 'https:' . str_replace( 't_thumb', 't_cover_big', $game['cover']['url'] );
 		}
 
-		// null means the date is too vague (year-only / TBD); caller should skip.
-		$release_date = ! empty( $game['first_release_date'] )
-			? self::resolve_release_date( $game )
-			: null;
+		// Exact day or a release window (month/quarter/year); null when IGDB only
+		// says "TBD" — the caller skips those.
+		$release = GC_Release_Date::from_igdb( $game );
 
 		$genre = '';
 		if ( ! empty( $game['genres'] ) ) {
@@ -237,7 +228,8 @@ class GC_IGDB_Importer {
 
 		return array(
 			'title'        => $game['name'] ?? '',
-			'release_date' => $release_date,
+			'release_date' => $release ? $release['date'] : null,
+			'precision'    => $release ? $release['precision'] : null,
 			'developer'    => $developer,
 			'publisher'    => $publisher,
 			'genre'        => $genre,
@@ -257,8 +249,8 @@ class GC_IGDB_Importer {
 
 		$mapped = $this->map_game( $game );
 
-		// Skip games with no specific release date (year-only or TBD on IGDB).
-		// They'll be picked up automatically once IGDB publishes a real date.
+		// Skip games without any release date ("TBD" on IGDB). They'll be picked
+		// up automatically once IGDB publishes a date or release window.
 		if ( null === $mapped['release_date'] ) {
 			return false;
 		}
@@ -284,7 +276,7 @@ class GC_IGDB_Importer {
 		}
 
 		update_post_meta( $post_id, 'gc_igdb_id',      $igdb_id );
-		update_post_meta( $post_id, 'gc_release_date',  $mapped['release_date'] );
+		GC_Release_Date::save( $post_id, $mapped['release_date'], $mapped['precision'] );
 		update_post_meta( $post_id, 'gc_developer',     $mapped['developer'] );
 		update_post_meta( $post_id, 'gc_publisher',     $mapped['publisher'] );
 		update_post_meta( $post_id, 'gc_genre',         $mapped['genre'] );
@@ -334,7 +326,7 @@ class GC_IGDB_Importer {
 		$api = new GC_IGDB_API();
 		foreach ( array_chunk( array_keys( $id_map ), 500 ) as $chunk ) {
 			$ids_str = implode( ',', array_map( 'intval', $chunk ) );
-			$body    = 'fields id,name,cover.url,first_release_date,status; where id = (' . $ids_str . '); limit 500;';
+			$body    = 'fields id,name,cover.url,first_release_date,status,' . GC_Release_Date::IGDB_FIELDS . '; where id = (' . $ids_str . '); limit 500;';
 			$results = $api->query_games( $body );
 
 			if ( is_wp_error( $results ) || ! is_array( $results ) ) {
@@ -360,12 +352,19 @@ class GC_IGDB_Importer {
 
 				$changed = false;
 
-				// Sync release date.
-				if ( ! empty( $igdb_game['first_release_date'] ) ) {
-					$new_date     = gmdate( 'Y-m-d', (int) $igdb_game['first_release_date'] );
-					$current_date = get_post_meta( $post_id, 'gc_release_date', true );
-					if ( $new_date !== $current_date ) {
-						update_post_meta( $post_id, 'gc_release_date', $new_date );
+				// Sync release date and its precision (exact day or release window).
+				$release = GC_Release_Date::from_igdb( $igdb_game );
+				if ( $release && 'tbd' === $release['precision'] ) {
+					// IGDB dropped the date: keep the entry, but off the calendar.
+					if ( 'tbd' !== GC_Release_Date::get_precision( $post_id ) ) {
+						GC_Release_Date::mark_tbd( $post_id );
+						$changed = true;
+					}
+				} elseif ( $release ) {
+					$current_date      = get_post_meta( $post_id, 'gc_release_date', true );
+					$current_precision = GC_Release_Date::get_precision( $post_id );
+					if ( $release['date'] !== $current_date || $release['precision'] !== $current_precision ) {
+						GC_Release_Date::save( $post_id, $release['date'], $release['precision'] );
 						$changed = true;
 					}
 				}

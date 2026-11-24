@@ -44,7 +44,7 @@
 						thumb +
 						'<span class="gc-igdb-info">' +
 							'<strong>' + $( '<div>' ).text( game.name ).html() + '</strong>' +
-							( game.release_date ? '<br><small>' + game.release_date + '</small>' : '' ) +
+							( game.release_date ? '<br><small>' + $( '<div>' ).text( game.release_label || game.release_date ).html() + '</small>' : '' ) +
 							( game.developer    ? '<br><small>' + $( '<div>' ).text( game.developer ).html() + '</small>' : '' ) +
 						'</span>'
 					);
@@ -74,6 +74,7 @@
 	function populateFields( game ) {
 		// Always overwrite with IGDB data.
 		setValue( '#gc_release_date', game.release_date );
+		setValue( '#gc_release_precision', game.release_precision || 'day' );
 		setValue( '#gc_developer',    game.developer );
 		setValue( '#gc_publisher',    game.publisher );
 		setValue( '#gc_genre',        game.genre );

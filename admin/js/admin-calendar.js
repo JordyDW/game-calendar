@@ -42,7 +42,8 @@
 					fetch(
 						gcAdminCal.restUrl
 							+ '?start=' + encodeURIComponent( fetchInfo.startStr )
-							+ '&end='   + encodeURIComponent( fetchInfo.endStr ),
+							+ '&end='   + encodeURIComponent( fetchInfo.endStr )
+							+ '&include_vague=1',
 						{ headers: { 'X-WP-Nonce': gcAdminCal.restNonce } }
 					)
 					.then( function ( r ) { return r.json(); } )
@@ -61,6 +62,16 @@
 				showPopover( info.event, info.el );
 			},
 			eventDidMount: function ( info ) {
+				// Release windows ("Q2 2027") sit on the window's last day; say so.
+				if ( info.event.extendedProps.dateLabel ) {
+					var labelEl = info.el.querySelector( '.fc-event-title, .fc-list-event-title a' );
+					if ( labelEl ) {
+						var windowSpan = document.createElement( 'span' );
+						windowSpan.className   = 'gc-window-label';
+						windowSpan.textContent = ' (' + info.event.extendedProps.dateLabel + ')';
+						labelEl.appendChild( windowSpan );
+					}
+				}
 				if ( info.event.extendedProps.status === 'draft' ) {
 					info.el.classList.add( 'gc-event--draft' );
 					// Inject span so the label works in both month and list views
@@ -161,6 +172,8 @@
 			var el = document.getElementById( id );
 			if ( el ) el.value = '';
 		} );
+		var precision = document.getElementById( 'gc-modal-precision' );
+		if ( precision ) precision.value = 'day';
 
 		[ 'gc-modal-cover-img', 'gc-modal-event-cover-img' ].forEach( function ( id ) {
 			var img = document.getElementById( id );
@@ -239,6 +252,7 @@
 
 		if ( 'gc_release' === activeType ) {
 			data.gc_release_date = document.getElementById( 'gc-modal-date' ).value;
+			data.gc_release_precision = document.getElementById( 'gc-modal-precision' ).value;
 			data.gc_developer    = document.getElementById( 'gc-modal-developer' ).value;
 			data.gc_publisher    = document.getElementById( 'gc-modal-publisher' ).value;
 			data.gc_genre        = document.getElementById( 'gc-modal-genre' ).value;
@@ -375,7 +389,7 @@
 								: '<span class="gc-igdb-no-thumb"></span>' ) +
 							'<span class="gc-igdb-info">' +
 								'<strong>' + esc( game.name ) + '</strong>' +
-								( game.release_date ? '<br><small>' + esc( game.release_date ) + '</small>' : '' ) +
+								( game.release_date ? '<br><small>' + esc( game.release_label || game.release_date ) + '</small>' : '' ) +
 								( game.developer    ? '<br><small>' + esc( game.developer )    + '</small>' : '' ) +
 							'</span>';
 						li.addEventListener( 'click', function () {
@@ -406,6 +420,7 @@
 	function fillFromIGDB( game ) {
 		setVal( 'gc-modal-title',     game.name );
 		setVal( 'gc-modal-date',      game.release_date );
+		setVal( 'gc-modal-precision', game.release_precision || 'day' );
 		setVal( 'gc-modal-developer', game.developer );
 		setVal( 'gc-modal-publisher', game.publisher );
 		setVal( 'gc-modal-genre',     game.genre );
@@ -552,6 +567,7 @@
 
 			if ( 'gc_release' === d.post_type ) {
 				setVal( 'gc-modal-date',      d.gc_release_date );
+				setVal( 'gc-modal-precision', d.gc_release_precision || 'day' );
 				setVal( 'gc-modal-developer', d.gc_developer );
 				setVal( 'gc-modal-publisher', d.gc_publisher );
 				setVal( 'gc-modal-genre',     d.gc_genre );

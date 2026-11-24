@@ -316,6 +316,11 @@ class GC_Discord_Notifier {
 			) );
 
 			foreach ( $posts as $post ) {
+				// Release windows ("Q2 2027") sit on a placeholder day — never
+				// announce them as "out today" or count down to them.
+				if ( GC_Release_Date::is_vague( $post->ID ) ) {
+					continue;
+				}
 				if ( ! get_post_meta( $post->ID, 'gc_discord_skip', true ) ) {
 					$results[] = $post;
 				}
@@ -419,6 +424,7 @@ class GC_Discord_Notifier {
 			'title'       => $this->decode( get_the_title( $post_id ) ),
 			'description' => $this->excerpt( $post_id ),
 			'date'        => $date,
+			'date_label'  => ( ! $is_event && GC_Release_Date::is_vague( $post_id ) ) ? GC_Release_Date::post_label( $post_id ) : '',
 			'url'         => $url,
 			'cover'       => $cover,
 			'address'     => $is_event ? $this->decode( get_post_meta( $post_id, 'gc_event_address', true ) ) : '',
@@ -521,7 +527,7 @@ class GC_Discord_Notifier {
 		if ( $f['date'] ) {
 			$fields[] = array(
 				'name'   => ( 'gc_event' === $f['type'] ) ? __( 'When', 'game-calendar' ) : __( 'Release date', 'game-calendar' ),
-				'value'  => $this->format_date( $f['date'] ),
+				'value'  => ! empty( $f['date_label'] ) ? $f['date_label'] : $this->format_date( $f['date'] ),
 				'inline' => true,
 			);
 		}

@@ -19,12 +19,16 @@ Built for [Gamekast](https://gamekast.be).
 - **Gaming Events** — title, start/end datetime, URL (conferences, showcases, streams)
 - **IGDB integration** — search and auto-fill game data including cover art directly from the add modal
 - **Admin calendar** — click a date to add an entry, click an entry to edit or delete it, all without leaving the calendar
-- **Public calendar** — embed anywhere with a shortcode; month, week, day and agenda views
+- **Public calendar** — embed anywhere with a shortcode; month, week, day and agenda views. Phones open on the agenda list; busy days show 3 entries and a “+N more” popover
+- **Release windows** — games that only have a window on IGDB (“March 2027”, “Q2 2027”, “2027”) are kept off the grid and listed below it under **No exact date yet**; they move onto the calendar once a release day is known
 - **Dark gaming theme** — styled to match a gaming site aesthetic out of the box
 - **Cover art in calendar cards** — game covers render directly on the calendar tile
 - **Hover tooltips** — rich tooltip on hover showing cover, date, developer, platforms
 - **Click-to-detail modal** — click any event to see full details; visit page button if a URL is set
-- **Type filters** — toggle game releases and gaming events independently
+- **Filters** — toggle game releases and gaming events, and filter releases by platform family (PlayStation, Xbox, Nintendo, PC, Mobile); filters are kept in the URL so shared links keep them
+- **Calendar subscription** — an iCalendar feed (`/wp-json/game-calendar/v1/calendar.ics`, follows the active filters) with one-click links for Google Calendar and Apple Calendar / Outlook
+- **Upcoming strip** — `[game_calendar_upcoming]` shows the next releases and events as cover cards
+- **Translations** — follows the site language (FullCalendar locale + translation files in `/languages`); ships with Dutch for the visitor-facing texts
 - **Discord notifications** — push releases, events and DLC to a Discord channel via webhook, with instant, daily, countdown and weekly-digest triggers, rich embeds, optional `@everyone`/role pings, and per-entry overrides
 - **Import logs** — a **Logs** page recording everything that entered the calendar, automatically (scheduled IGDB import) or manually (quick-add), plus auto-import runs, cancellations and deletions; filter by source and jump to any entry
 - **Auto-updates** — updates delivered via GitHub Releases, installable from the WP admin
@@ -143,6 +147,20 @@ Optional height parameter (default `650px`):
 [game_calendar height="800px"]
 ```
 
+### Upcoming strip
+
+Show the next releases (exact dates only) and events as a row of cover cards that link to the calendar on that month:
+
+```
+[game_calendar_upcoming count="6" url="/kalender/"]
+```
+
+`count` is 1–12 (default 6); `url` defaults to the **Calendar page URL** setting. When calling it from a theme template, enqueue the `gc-upcoming` style on `wp_enqueue_scripts` (priority > 5) so it loads in the head.
+
+### Calendar feed
+
+`/wp-json/game-calendar/v1/calendar.ics` serves releases with an exact date and all events (a month back, a year ahead) as iCalendar. It accepts the same `type` (`gc_release,gc_event`) and `platform` (`playstation,xbox,nintendo,pc,mobile`) parameters as the calendar; the **Subscribe** button builds these links for visitors.
+
 ### Adding entries
 
 In the WP admin, go to **Game Calendar**. Either:
@@ -150,6 +168,8 @@ In the WP admin, go to **Game Calendar**. Either:
 - Click the **Add Release or Event** button in the toolbar
 
 For game releases, type in the IGDB search box to auto-fill all fields from the IGDB database.
+
+**Release windows.** Next to the release date, pick how precise it is: *Exact day*, *Month only*, *Quarter only* or *Year only*. A window is stored on its last day (IGDB's convention) and shown as “March 2027” / “Q2 2027” / “2027”: below the public calendar instead of on a made-up day, labelled in the admin calendar, and never announced on Discord as “out today”. IGDB-linked entries get their date and precision from IGDB on every sync (including *Unknown*, which hides an entry whose date IGDB dropped).
 
 ### Editing entries
 
@@ -213,7 +233,9 @@ game-calendar/
 │   ├── class-post-types.php       # CPT + taxonomy registration
 │   ├── class-meta-boxes.php       # Admin meta boxes
 │   ├── class-igdb-api.php         # IGDB OAuth + search
-│   ├── class-calendar-query.php   # REST endpoint + shortcode
+│   ├── class-calendar-query.php   # REST endpoints (events, unscheduled, .ics) + shortcodes
+│   ├── class-release-date.php     # Release date precision (exact day / month / quarter / year)
+│   ├── class-platforms.php        # Platform families for the public filter
 │   ├── class-admin-calendar.php   # Admin calendar page + AJAX
 │   ├── class-settings.php         # Settings page
 │   ├── class-discord-notifier.php # Discord webhook notifications + cron
@@ -228,9 +250,12 @@ game-calendar/
 │   └── css/admin.css              # Post edit screen styles
 ├── public/
 │   ├── js/calendar.js             # Public calendar JS
-│   └── css/calendar.css           # Public calendar styles
-└── templates/
-    └── calendar.php               # Shortcode template
+│   ├── css/calendar.css           # Public calendar styles
+│   └── css/upcoming.css           # [game_calendar_upcoming] styles
+├── templates/
+│   ├── calendar.php               # [game_calendar] template
+│   └── upcoming.php               # [game_calendar_upcoming] template
+└── languages/                     # Translations (.po/.mo/.l10n.php)
 ```
 
 ---

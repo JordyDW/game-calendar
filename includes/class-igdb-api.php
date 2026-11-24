@@ -94,7 +94,7 @@ class GC_IGDB_API {
 			: '';
 
 		$body = 'search "' . addslashes( $query ) . '"; '
-			. 'fields id,name,url,cover.url,first_release_date,genres.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,platforms.name; '
+			. 'fields id,name,url,cover.url,first_release_date,genres.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,platforms.name,' . GC_Release_Date::IGDB_FIELDS . '; '
 			. $where
 			. 'limit 8;';
 
@@ -139,10 +139,10 @@ class GC_IGDB_API {
 				$cover = 'https:' . str_replace( 't_thumb', 't_cover_big', $game['cover']['url'] );
 			}
 
-			$release_date = '';
-			if ( ! empty( $game['first_release_date'] ) ) {
-				$release_date = gmdate( 'Y-m-d', (int) $game['first_release_date'] );
-			}
+			// Exact day or a release window ("Q2 2027"); empty when IGDB says TBD.
+			$release      = GC_Release_Date::from_igdb( $game );
+			$release_date = ( $release && $release['date'] ) ? $release['date'] : '';
+			$precision    = $release_date ? $release['precision'] : 'day';
 
 			$genres = '';
 			if ( ! empty( $game['genres'] ) ) {
@@ -160,6 +160,8 @@ class GC_IGDB_API {
 				'url'          => $game['url'] ?? '',
 				'cover'        => $cover,
 				'release_date' => $release_date,
+				'release_precision' => $precision,
+				'release_label'     => $release_date ? GC_Release_Date::label( $release_date, $precision ) : '',
 				'developer'    => $developer,
 				'publisher'    => $publisher,
 				'genre'        => $genres,

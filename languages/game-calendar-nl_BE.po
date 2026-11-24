@@ -1,0 +1,125 @@
+# Dutch translation of the Game Calendar plugin (visitor-facing strings).
+# Untranslated strings fall back to English.
+msgid ""
+msgstr ""
+"Project-Id-Version: Game Calendar 1.3.0\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: nl_BE\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Domain: game-calendar\n"
+
+msgid "Close"
+msgstr "Sluiten"
+
+msgid "Address"
+msgstr "Adres"
+
+msgid "Developer"
+msgstr "Ontwikkelaar"
+
+msgid "Publisher"
+msgstr "Uitgever"
+
+msgid "Genre"
+msgstr "Genre"
+
+msgid "Platforms"
+msgstr "Platformen"
+
+msgid "Date"
+msgstr "Datum"
+
+msgid "%s – game calendar"
+msgstr "%s – gamekalender"
+
+msgid "Gaming event"
+msgstr "Event"
+
+msgid "Game release"
+msgstr "Release"
+
+msgid "Expected"
+msgstr "Verwacht"
+
+msgid "Click to open ↗"
+msgstr "Klik om te openen ↗"
+
+msgid "Agenda"
+msgstr "Agenda"
+
+msgid "more"
+msgstr "meer"
+
+msgid "No releases or events in this period."
+msgstr "Geen releases of events in deze periode."
+
+msgid "Share"
+msgstr "Delen"
+
+msgid "Copied!"
+msgstr "Gekopieerd!"
+
+msgid "Link copied!"
+msgstr "Link gekopieerd!"
+
+msgid "Game Releases"
+msgstr "Releases"
+
+msgid "Gaming Events"
+msgstr "Events"
+
+msgid "Q%1$d %2$d"
+msgstr "Q%1$d %2$d"
+
+msgid "Date unknown"
+msgstr "Datum onbekend"
+
+msgid "Exact day"
+msgstr "Exacte dag"
+
+msgid "Month only"
+msgstr "Enkel maand"
+
+msgid "Quarter only"
+msgstr "Enkel kwartaal"
+
+msgid "Year only"
+msgstr "Enkel jaar"
+
+msgid "Unknown (hidden)"
+msgstr "Onbekend (verborgen)"
+
+msgid "Show"
+msgstr "Toon"
+
+msgid "Subscribe"
+msgstr "Abonneren"
+
+msgid "Get these releases and events in your own calendar app. It stays up to date and follows the filters you picked."
+msgstr "Krijg deze releases en events in je eigen agenda-app. Ze blijven automatisch up-to-date en volgen de filters die je koos."
+
+msgid "Google Calendar"
+msgstr "Google Agenda"
+
+msgid "Apple Calendar / Outlook"
+msgstr "Apple Agenda / Outlook"
+
+msgid "Copy feed link"
+msgstr "Feedlink kopiëren"
+
+msgid "Copy calendar link"
+msgstr "Kalenderlink kopiëren"
+
+msgid "No exact date yet"
+msgstr "Nog geen exacte datum"
+
+msgid "These games only have a release window so far. As soon as there is a release day, they move to the calendar."
+msgstr "Van deze games is voorlopig enkel een releaseperiode bekend. Zodra er een releasedatum is, verschijnen ze in de kalender."
+
+msgid "Visit page"
+msgstr "Bekijk pagina"
+
+msgid "Only a release window known (e.g. \"Q2 2027\")? Pick a date in that window and choose month, quarter or year. Such releases are listed below the calendar instead of on a specific day."
+msgstr "Enkel een releaseperiode bekend (bv. \"Q2 2027\")? Kies een datum in die periode en kies maand, kwartaal of jaar. Zulke releases staan onder de kalender in plaats van op een specifieke dag."

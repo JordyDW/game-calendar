@@ -87,7 +87,11 @@ class GC_Meta_Boxes {
 			<table class="form-table gc-form-table">
 				<tr>
 					<th><label for="gc_release_date"><?php esc_html_e( 'Release Date', 'game-calendar' ); ?></label></th>
-					<td><input type="date" id="gc_release_date" name="gc_release_date" value="<?php echo esc_attr( $release_date ); ?>" /></td>
+					<td>
+						<input type="date" id="gc_release_date" name="gc_release_date" value="<?php echo esc_attr( $release_date ); ?>" />
+						<?php GC_Release_Date::render_select( 'gc_release_precision', 'gc_release_precision', GC_Release_Date::get_precision( $post->ID ) ); ?>
+						<p class="description"><?php esc_html_e( 'Only a release window known (e.g. "Q2 2027")? Pick a date in that window and choose month, quarter or year. Such releases are listed below the calendar instead of on a specific day.', 'game-calendar' ); ?></p>
+					</td>
 				</tr>
 				<tr>
 					<th><label for="gc_developer"><?php esc_html_e( 'Developer', 'game-calendar' ); ?></label></th>
@@ -219,7 +223,11 @@ class GC_Meta_Boxes {
 			</tr>
 			<tr>
 				<th><label for="gc_release_date"><?php esc_html_e( 'Release Date', 'game-calendar' ); ?></label></th>
-				<td><input type="date" id="gc_release_date" name="gc_release_date" value="<?php echo esc_attr( $release_date ); ?>" /></td>
+				<td>
+						<input type="date" id="gc_release_date" name="gc_release_date" value="<?php echo esc_attr( $release_date ); ?>" />
+						<?php GC_Release_Date::render_select( 'gc_release_precision', 'gc_release_precision', GC_Release_Date::get_precision( $post->ID ) ); ?>
+						<p class="description"><?php esc_html_e( 'Only a release window known (e.g. "Q2 2027")? Pick a date in that window and choose month, quarter or year. Such releases are listed below the calendar instead of on a specific day.', 'game-calendar' ); ?></p>
+					</td>
 			</tr>
 		</table>
 		<?php $this->render_discord_fields( $post ); ?>
@@ -301,7 +309,14 @@ class GC_Meta_Boxes {
 			if ( ! isset( $_POST['gc_release_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['gc_release_nonce'] ), 'gc_release_save' ) ) {
 				return;
 			}
-			$fields = array( 'gc_release_date', 'gc_developer', 'gc_publisher', 'gc_genre', 'gc_cover_url' );
+			if ( isset( $_POST['gc_release_date'] ) ) {
+				GC_Release_Date::save(
+					$post_id,
+					wp_unslash( $_POST['gc_release_date'] ),
+					isset( $_POST['gc_release_precision'] ) ? sanitize_key( $_POST['gc_release_precision'] ) : null
+				);
+			}
+			$fields = array( 'gc_developer', 'gc_publisher', 'gc_genre', 'gc_cover_url' );
 			foreach ( $fields as $field ) {
 				if ( isset( $_POST[ $field ] ) ) {
 					update_post_meta( $post_id, $field, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
@@ -364,7 +379,11 @@ class GC_Meta_Boxes {
 				return;
 			}
 			if ( isset( $_POST['gc_release_date'] ) ) {
-				update_post_meta( $post_id, 'gc_release_date', sanitize_text_field( wp_unslash( $_POST['gc_release_date'] ) ) );
+				GC_Release_Date::save(
+					$post_id,
+					wp_unslash( $_POST['gc_release_date'] ),
+					isset( $_POST['gc_release_precision'] ) ? sanitize_key( $_POST['gc_release_precision'] ) : null
+				);
 			}
 			if ( isset( $_POST['gc_parent_game'] ) ) {
 				update_post_meta( $post_id, 'gc_parent_game', absint( $_POST['gc_parent_game'] ) );
