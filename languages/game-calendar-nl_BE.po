@@ -123,3 +123,9 @@ msgstr "Bekijk pagina"
 
 msgid "Only a release window known (e.g. \"Q2 2027\")? Pick a date in that window and choose month, quarter or year. Such releases are listed below the calendar instead of on a specific day."
 msgstr "Enkel een releaseperiode bekend (bv. \"Q2 2027\")? Kies een datum in die periode en kies maand, kwartaal of jaar. Zulke releases staan onder de kalender in plaats van op een specifieke dag."
+
+msgid "Read our review"
+msgstr "Lees onze review"
+
+msgid "Review"
+msgstr "Review"

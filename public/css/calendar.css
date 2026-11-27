@@ -594,6 +594,64 @@
 	transform: translateY(-1px);
 }
 
+.gc-detail-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 4px;
+}
+
+.gc-detail-actions .gc-detail-link {
+	margin-top: 0;
+}
+
+/* "Read our review" (added through the gc_format_event filter). */
+.gc-detail-link--review {
+	background: #fbff57;
+	color: #060528 !important;
+	box-shadow: 3px 3px 0 #ac00fb;
+}
+
+.gc-detail-link--review:hover {
+	background: #fdff9a;
+}
+
+/* Score badge on entries with a review. */
+.gc-review-badge {
+	display: inline-block;
+	padding: 1px 6px;
+	border-radius: 5px;
+	background: #fbff57;
+	color: #060528;
+	font-size: 11px;
+	font-weight: 800;
+	line-height: 1.4;
+	box-shadow: 2px 2px 0 #ac00fb;
+	white-space: nowrap;
+}
+
+.gc-event-card .gc-review-badge,
+.gc-unscheduled-cover .gc-review-badge {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	z-index: 2;
+}
+
+.gc-unscheduled-cover {
+	position: relative;
+}
+
+.gc-list-title .gc-review-badge {
+	margin-left: 6px;
+	vertical-align: 1px;
+}
+
+.gc-tip-review {
+	color: #fbff57;
+	font-weight: 700;
+}
+
 /* ── Misc ────────────────────────────────────────────────────────────────── */
 
 body.gc-modal-open {

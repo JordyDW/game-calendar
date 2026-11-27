@@ -25,6 +25,7 @@ Built for [Gamekast](https://gamekast.be).
 - **Cover art in calendar cards** — game covers render directly on the calendar tile
 - **Hover tooltips** — rich tooltip on hover showing cover, date, developer, platforms
 - **Click-to-detail modal** — click any event to see full details; visit page button if a URL is set
+- **Reviews** — releases you reviewed (linked by a reviews plugin through a filter) get a score badge and a **Read our review** button; see [Extending](#extending)
 - **Filters** — toggle game releases and gaming events, and filter releases by platform family (PlayStation, Xbox, Nintendo, PC, Mobile); filters are kept in the URL so shared links keep them
 - **Calendar subscription** — an iCalendar feed (`/wp-json/game-calendar/v1/calendar.ics`, follows the active filters) with one-click links for Google Calendar and Apple Calendar / Outlook
 - **Upcoming strip** — `[game_calendar_upcoming]` shows the next releases and events as cover cards
@@ -174,6 +175,25 @@ For game releases, type in the IGDB search box to auto-fill all fields from the 
 ### Editing entries
 
 Click any event on the admin calendar → click **Edit** in the popover. The modal opens pre-filled — no WP post edit screen required.
+
+### Extending
+
+**`gc_format_event` filter.** Every entry passes through `apply_filters( 'gc_format_event', $event, $post )` before it reaches the calendar (grid, agenda and the *No exact date yet* list). Add `extendedProps.review` to link a review:
+
+```php
+add_filter( 'gc_format_event', function ( $event, $post ) {
+	if ( 'gc_release' === $post->post_type && $review = my_review_for( $post ) ) {
+		$event['extendedProps']['review'] = array(
+			'url'   => get_permalink( $review ), // required
+			'score' => '8,5',                    // optional, shown as a badge
+			'max'   => 10,                       // optional, default 10
+		);
+	}
+	return $event;
+}, 10, 2 );
+```
+
+**IGDB client.** `GC_IGDB_API::instance()->query( $endpoint, $body )` runs any IGDB query with the plugin's credentials and cached token, e.g. `query( 'games', 'fields screenshots.image_id; where id = 1942;' )`. It returns the decoded array or a `WP_Error`.
 
 ---
 

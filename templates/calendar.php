@@ -80,9 +80,12 @@ $gc_families = GC_Platforms::available_families();
 				<span id="gc-detail-type" class="gc-detail-type"></span>
 				<h2 id="gc-detail-title" class="gc-detail-title"></h2>
 				<div id="gc-detail-meta" class="gc-detail-meta"></div>
-				<a id="gc-detail-link" href="#" target="_blank" rel="noopener noreferrer" class="gc-detail-link" hidden>
-					<?php esc_html_e( 'Visit page', 'game-calendar' ); ?> ↗
-				</a>
+				<div class="gc-detail-actions">
+					<a id="gc-detail-review" href="#" class="gc-detail-link gc-detail-link--review" hidden></a>
+					<a id="gc-detail-link" href="#" target="_blank" rel="noopener noreferrer" class="gc-detail-link" hidden>
+						<?php esc_html_e( 'Visit page', 'game-calendar' ); ?> ↗
+					</a>
+				</div>
 			</div>
 		</div>
 	</div>

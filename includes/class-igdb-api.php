@@ -9,8 +9,28 @@ class GC_IGDB_API {
 	const TOKEN_URL       = 'https://id.twitch.tv/oauth2/token';
 	const IGDB_BASE       = 'https://api.igdb.com/v4/';
 
+	private static $instance = null;
+
 	public function __construct() {
+		self::$instance = $this;
 		add_action( 'wp_ajax_gc_igdb_search', array( $this, 'ajax_search' ) );
+	}
+
+	/**
+	 * The plugin's IGDB client, for other plugins (e.g. Game Kast Reviews).
+	 */
+	public static function instance() {
+		return self::$instance ? self::$instance : new self();
+	}
+
+	/**
+	 * Raw IGDB query (Apicalypse body) against any endpoint, e.g.
+	 * query( 'games', 'fields screenshots.image_id; where id = 1942;' ).
+	 *
+	 * @return array|WP_Error Decoded response.
+	 */
+	public function query( $endpoint, $body ) {
+		return $this->request( sanitize_key( $endpoint ), $body );
 	}
 
 	public function get_token() {

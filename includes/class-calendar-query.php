@@ -234,7 +234,17 @@ class GC_Calendar_Query {
 			}
 		}
 
-		return $event;
+		/**
+		 * Filters a calendar entry before it is sent to the calendar (events and
+		 * "no exact date yet" lists alike).
+		 *
+		 * Set extendedProps.review = array( 'url' => …, 'score' => '8,5', 'max' => 10 )
+		 * to show a "Read our review" button and a score badge for that entry.
+		 *
+		 * @param array   $event FullCalendar event data.
+		 * @param WP_Post $post  The calendar entry.
+		 */
+		return apply_filters( 'gc_format_event', $event, $post );
 	}
 
 	/* ---------------------------------------------------------------------
@@ -631,6 +641,8 @@ class GC_Calendar_Query {
 				'share'        => __( 'Share', 'game-calendar' ),
 				'copied'       => __( 'Copied!', 'game-calendar' ),
 				'linkCopied'   => __( 'Link copied!', 'game-calendar' ),
+				'readReview'   => __( 'Read our review', 'game-calendar' ),
+				'review'       => __( 'Review', 'game-calendar' ),
 			),
 		) );
 	}

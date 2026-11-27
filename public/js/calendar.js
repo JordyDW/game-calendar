@@ -160,6 +160,19 @@
 				linkEl.hidden = true;
 			}
 
+			// Review of this game (set through the gc_format_event filter).
+			var reviewEl = document.getElementById( 'gc-detail-review' );
+			if ( reviewEl ) {
+				if ( props.review && props.review.url ) {
+					reviewEl.href        = props.review.url;
+					reviewEl.textContent = reviewLabel( props.review );
+					reviewEl.hidden      = false;
+				} else {
+					reviewEl.href   = '#';
+					reviewEl.hidden = true;
+				}
+			}
+
 			modal.hidden = false;
 			document.body.classList.add( 'gc-modal-open' );
 		}
@@ -189,6 +202,22 @@
 		} );
 
 		// ── Event rendering ──────────────────────────────────────────────────
+
+		// "Read our review · 8,5/10"
+		function reviewLabel( review ) {
+			return t( 'readReview', 'Read our review' ) + ( review.score ? ' · ' + review.score + '/' + ( review.max || 10 ) : '' );
+		}
+
+		// Score badge for entries with a review, or null.
+		function reviewBadge( props ) {
+			if ( ! props.review || ! props.review.url ) return null;
+			var badge = document.createElement( 'span' );
+			badge.className   = 'gc-review-badge';
+			badge.textContent = props.review.score || t( 'review', 'Review' );
+			badge.title       = reviewLabel( props.review );
+			return badge;
+		}
+
 		function coverCard( arg ) {
 			var props    = arg.event.extendedProps || {};
 			var hasCover = !! props.cover;
@@ -219,6 +248,9 @@
 			label.textContent = arg.event.title;
 			wrap.appendChild( label );
 
+			var badge = reviewBadge( props );
+			if ( badge ) wrap.appendChild( badge );
+
 			return wrap;
 		}
 
@@ -245,6 +277,8 @@
 			var title = document.createElement( 'span' );
 			title.className   = 'gc-list-title';
 			title.textContent = arg.event.title;
+			var listBadge = reviewBadge( props );
+			if ( listBadge ) title.appendChild( listBadge );
 			var meta = document.createElement( 'span' );
 			meta.className   = 'gc-list-meta';
 			var platforms = ( props.platformFamilies && props.platformFamilies.length ) ? props.platformFamilies : props.platforms;
@@ -288,6 +322,9 @@
 			}
 			if ( props.address ) {
 				html += '<span class="gc-tip-row gc-tip-address">📍 ' + escHtml( props.address ) + '</span>';
+			}
+			if ( props.review && props.review.url ) {
+				html += '<span class="gc-tip-row gc-tip-review">★ ' + escHtml( reviewLabel( props.review ) ) + '</span>';
 			}
 			if ( event.url ) {
 				html += '<span class="gc-tip-link">' + escHtml( t( 'clickToOpen', 'Click to open ↗' ) ) + '</span>';
@@ -418,6 +455,9 @@
 						cover.appendChild( img );
 					}
 					btn.appendChild( cover );
+
+					var badge = reviewBadge( props );
+					if ( badge ) cover.appendChild( badge );
 
 					var title = document.createElement( 'span' );
 					title.className   = 'gc-unscheduled-name';
